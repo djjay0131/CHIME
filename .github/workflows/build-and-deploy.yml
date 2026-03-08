@@ -1,0 +1,105 @@
+name: Build LaTeX and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'report/**'
+      - 'presentation/**'
+      - '.github/workflows/build-and-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build report PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: report/main.tex
+          working_directory: .
+
+      - name: Build presentation PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: presentation/main.tex
+          working_directory: .
+
+      - name: Prepare deploy directory
+        run: |
+          mkdir -p docs
+          cp report/main.pdf docs/report.pdf
+          cp presentation/main.pdf docs/presentation.pdf
+
+          cat > docs/index.html << 'HTMLEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>CHIME Experiment Reproduction - CS 6204</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 50px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+              h1 { border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
+              a { color: #2563eb; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+              .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 15px 0; }
+              .card h2 { margin-top: 0; }
+              .meta { color: #64748b; font-size: 0.9em; }
+            </style>
+          </head>
+          <body>
+            <h1>CHIME Experiment Reproduction</h1>
+            <p class="meta">CS 6204 - Advanced Topics in Systems | Spring 2026 | Virginia Tech</p>
+            <p>Reproducing experiments from <em>CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory</em> (SOSP '24)</p>
+
+            <div class="card">
+              <h2>Progress Report</h2>
+              <p>Part One results: 5-method comparison on 10 CloudLab r650 nodes with RDMA.</p>
+              <p><a href="report.pdf">Download Report (PDF)</a></p>
+            </div>
+
+            <div class="card">
+              <h2>Presentation</h2>
+              <p>Part One presentation slides (Beamer, 15-20 minutes).</p>
+              <p><a href="presentation.pdf">Download Slides (PDF)</a></p>
+            </div>
+
+            <div class="card">
+              <h2>Source</h2>
+              <p><a href="https://github.com/djjay0131/CHIME">GitHub Repository</a></p>
+            </div>
+          </body>
+          </html>
+          HTMLEOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs'
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

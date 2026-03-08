@@ -6,6 +6,22 @@ The name of each script corresponds to the number of each figure in our paper.
 > [!TIP]  
 > **📢 Since some of the scripts in this directory take a long execution time (as we mark below), we strongly recommend you create a *tmux session* (using the command `tmux`) on each node to avoid script interruption due to network instability.**
 
+## How To Read This Folder
+
+Each figure script is a controller around the C++ benchmark binaries, not a standalone experiment implementation.
+
+Typical flow:
+
+1. Load shared settings from `params/common.json`.
+2. Load figure-specific settings from `params/fig_*.json`.
+3. Rewrite compile-time constants in `../include/Common.h`.
+4. Rebuild the target system variant with CMake options.
+5. Restart supporting services when needed.
+6. Split workloads and run `./ycsb_test` across the cluster.
+7. Parse logs and generate JSON plus PDF outputs in `results/`.
+
+If you are starting from a code-understanding angle, read `../construction/design/codebase-guide.md` first. It includes a full walkthrough of `fig_03a.py`, which is representative of the overall pattern.
+
 
 ## Full YCSB workloads
 

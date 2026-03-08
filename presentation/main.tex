@@ -1,0 +1,147 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{metropolis}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{subcaption}
+
+\title{Reproducing CHIME}
+\subtitle{A Cache-Efficient and High-Performance Hybrid Index\\on Disaggregated Memory}
+\author{Ju Young Bang}
+\institute{CS 6204 --- Advanced Topics in Systems\\Virginia Tech}
+\date{April 7--9, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Paper Overview}
+
+\begin{frame}{CHIME: Key Idea}
+\begin{itemize}
+    \item Disaggregated memory (DM): decouple compute and memory into network-connected pools
+    \item Range indexes on DM face a trade-off: \textbf{cache consumption} vs.\ \textbf{read amplifications}
+    \item CHIME: hybrid B+ tree with \textbf{hopscotch-hashing leaf nodes}
+    \begin{itemize}
+        \item B+ tree internals $\rightarrow$ low cache consumption
+        \item Hopscotch leaves $\rightarrow$ low read amplifications
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Three Key Techniques}
+\begin{enumerate}
+    \item \textbf{Three-level optimistic synchronization}\\
+    Cache line versions + reused hopscotch bitmaps for fine-grained concurrency
+    \item \textbf{Access-aggregated metadata management}\\
+    Vacancy bitmap piggybacking + leaf metadata replication
+    \item \textbf{Hotness-aware speculative read}\\
+    Hotspot buffer to shortcut neighborhood reads
+\end{enumerate}
+\end{frame}
+
+\section{Experimental Setup}
+
+\begin{frame}{CloudLab Configuration}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\textbf{Hardware:}
+\begin{itemize}
+    \item 10$\times$ r650 nodes
+    \item ConnectX-6 (100 Gbps)
+    \item 256 GB DRAM per node
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{Software:}
+\begin{itemize}
+    \item CHIME + 4 baselines
+    \item YCSB: 60M entries
+    \item 8B keys, 8B values
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Methods Compared}
+\begin{table}
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Method} & \textbf{Type} & \textbf{Source} \\
+\midrule
+CHIME & Hybrid (B+ tree + hopscotch) & dmemsys/CHIME \\
+Sherman & B+ tree & CHIME repo (diff flags) \\
+SMART & Radix tree & dmemsys/SMART \\
+ROLEX & Learned index & River861/ROLEX \\
+SMART-SC & Radix tree (sufficient cache) & dmemsys/SMART \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\section{Results}
+
+\begin{frame}{Figure 12: YCSB Throughput-Latency}
+% TODO: Replace with actual figure
+\centering
+\textit{[Results to be added after experiments]}
+% \includegraphics[width=0.9\textwidth]{figures/fig_12.pdf}
+\end{frame}
+
+\begin{frame}{Figure 14: Cache Consumption}
+% TODO: Replace with actual figure
+\centering
+\textit{[Results to be added after experiments]}
+% \includegraphics[width=0.6\textwidth]{figures/fig_14.pdf}
+\end{frame}
+
+\begin{frame}{Figure 15: Factor Analysis}
+% TODO: Replace with actual figures
+\centering
+\textit{[Results to be added after experiments]}
+% \begin{subfigure}...
+\end{frame}
+
+\section{Analysis}
+
+\begin{frame}{Comparison with Paper}
+% TODO: Fill in after experiments
+\begin{itemize}
+    \item How do our results compare to the paper's claims?
+    \item Any discrepancies? Root causes?
+    \item Key takeaways
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lessons Learned}
+% TODO: Fill in
+\begin{itemize}
+    \item Setup challenges
+    \item Debugging experiences
+    \item Insights about DM systems
+\end{itemize}
+\end{frame}
+
+\section{Next Steps}
+
+\begin{frame}{Part Two: CXL Porting}
+\begin{itemize}
+    \item Port CHIME's RDMA communication layer to CXL
+    \item Compare performance: RDMA vs.\ CXL
+    \item Analyze implications for DM index design
+\end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+Questions?
+\end{frame}
+
+\end{document}

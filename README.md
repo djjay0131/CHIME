@@ -12,6 +12,7 @@ This artifact provides the source code of **CHIME** and scripts to reproduce all
   * [Source Code *(Artifacts Available)*](#source-code-artifacts-available)
   * [Environment Setup](#environment-setup)
   * [YCSB Workloads](#ycsb-workloads)
+  * [Documentation Map](#documentation-map)
   * [Getting Started *(Artifacts Functional)*](#getting-started-artifacts-functional)
   * [Reproduce All Experiment Results *(Results Reproduced)*](#reproduce-all-experiment-results-results-reproduced)
   * [Paper](#paper)
@@ -103,6 +104,22 @@ You should run the following steps on **all** nodes.
     # This takes about 20 seconds
     sh generate_small_workloads.sh
     ```
+
+
+## Documentation Map
+
+If you want to understand the code rather than only reproduce the artifact, start here:
+
+- `construction/design/codebase-guide.md`: high-level code map, build model, runtime layers, and an end-to-end walkthrough of `exp/fig_03a.py`
+- `memory-bank/systemPatterns.md`: compact summary of how compile-time flags, benchmark executables, and Python orchestration fit together
+- `memory-bank/activeContext.md`: current documentation focus and next steps
+
+Useful mental model:
+
+- `include/Common.h` controls many compile-time layout and sizing decisions
+- `include/Tree.h` and `src/Tree.cpp` implement the index operations
+- `test/ycsb_test.cpp` is the benchmark entrypoint invoked by the experiment scripts
+- `exp/*.py` scripts rebuild variants, run distributed experiments, parse logs, and plot figures
 
 
 ## Getting Started *(Artifacts Functional)*
