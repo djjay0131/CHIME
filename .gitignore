@@ -19,3 +19,4 @@ exp/backup
 .cloudlab-state.json
 .DS_Store
 .venv/
+files/cloudlab.jwt
