@@ -1,0 +1,154 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[numbers]{natbib}
+
+\geometry{margin=1in}
+
+\title{Reproducing CHIME: A Cache-Efficient and High-Performance\\Hybrid Index on Disaggregated Memory}
+\author{Ju Young Bang\\
+CS 6204 --- Advanced Topics in Systems\\
+Virginia Tech, Spring 2026}
+\date{March 26, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report documents the reproduction of experiments from the CHIME paper (SOSP '24), which proposes a hybrid B+ tree with hopscotch hashing for disaggregated memory. We reproduced the key performance results on 10 CloudLab r650 nodes with 100~Gbps RDMA, comparing CHIME against four baselines (Sherman, SMART, ROLEX, and SMART-SC). We present throughput-latency curves (Figure~12), cache consumption analysis (Figure~14), and factor analysis (Figures~15a/15b) from the original paper, along with observations on reproducibility and performance differences.
+\end{abstract}
+
+\section{Introduction}
+
+CHIME~\cite{chime2024} is a cache-efficient and high-performance hybrid index for disaggregated memory (DM). It combines B+ tree internal nodes with hopscotch-hashing-based leaf nodes to simultaneously achieve low cache consumption and low read amplifications. The paper introduces three key techniques: (1) three-level optimistic synchronization, (2) access-aggregated metadata management, and (3) hotness-aware speculative read.
+
+This report documents our effort to reproduce the paper's main experimental results on CloudLab infrastructure as part of the CS~6204 course project.
+
+\subsection{Scope}
+
+We reproduced the following experiments from the original paper:
+\begin{itemize}
+    \item \textbf{Figure 12:} YCSB throughput-latency comparison across 6 workloads (LOAD, A--E) with 5 methods
+    \item \textbf{Figure 14:} Cache consumption comparison across varying dataset sizes
+    \item \textbf{Figure 15a:} Factor analysis starting from Sherman (B+ tree baseline)
+    \item \textbf{Figure 15b:} Factor analysis starting from ROLEX (learned index baseline)
+\end{itemize}
+
+\section{Experimental Setup}
+
+\subsection{Hardware}
+
+All experiments were conducted on CloudLab r650 nodes:
+\begin{itemize}
+    \item \textbf{CPU:} 2$\times$ Intel Xeon (36 cores each)
+    \item \textbf{Memory:} 256~GB DDR4
+    \item \textbf{NIC:} Mellanox ConnectX-6 (100~Gbps)
+    \item \textbf{Network:} 100~Gbps Ethernet
+    \item \textbf{Cluster:} 10 nodes total
+\end{itemize}
+
+\subsection{Configuration}
+
+Following the paper's experimental setup (Section~5.1):
+\begin{itemize}
+    \item Compute nodes (CNs): 4~GB local cache, 64 cores (1 client per core)
+    \item Memory node (MN): 64~GB DRAM, 1 CPU core
+    \item YCSB workloads: 60M entries, 8-byte keys, 8-byte values, Zipfian distribution
+\end{itemize}
+
+\subsection{Software}
+
+\begin{itemize}
+    \item CHIME artifact: forked from \texttt{dmemsys/CHIME}
+    \item SMART baseline: \texttt{dmemsys/SMART}
+    \item ROLEX baseline: \texttt{River861/ROLEX} (CHIME authors' reimplementation)
+    \item Sherman baseline: built from CHIME repo with different CMake flags
+    \item Mellanox OFED drivers, memcached for metadata coordination
+\end{itemize}
+
+\section{Results}
+
+\subsection{Figure 12: YCSB Throughput-Latency}
+
+% TODO: Include reproduced Figure 12 plots
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{figures/fig_12.pdf}
+%     \caption{Reproduced performance comparison of range indexes on DM (cf. paper Figure 12).}
+%     \label{fig:12}
+% \end{figure}
+
+\textit{[Results to be added after experiments complete.]}
+
+\subsection{Figure 14: Cache Consumption}
+
+% TODO: Include reproduced Figure 14 plot
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.5\textwidth]{figures/fig_14.pdf}
+%     \caption{Reproduced cache consumption comparison (cf. paper Figure 14).}
+%     \label{fig:14}
+% \end{figure}
+
+\textit{[Results to be added after experiments complete.]}
+
+\subsection{Figure 15: Factor Analysis}
+
+% TODO: Include reproduced Figure 15a and 15b plots
+% \begin{figure}[H]
+%     \centering
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \includegraphics[width=\textwidth]{figures/fig_15a.pdf}
+%         \caption{Starting from Sherman (B+ tree).}
+%         \label{fig:15a}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[b]{0.48\textwidth}
+%         \includegraphics[width=\textwidth]{figures/fig_15b.pdf}
+%         \caption{Starting from ROLEX (learned index).}
+%         \label{fig:15b}
+%     \end{subfigure}
+%     \caption{Reproduced factor analysis for CHIME techniques (cf. paper Figure 15).}
+%     \label{fig:15}
+% \end{figure}
+
+\textit{[Results to be added after experiments complete.]}
+
+\section{Analysis}
+
+\subsection{Comparison with Paper Results}
+
+% TODO: Add comparison table and analysis
+\textit{[Analysis to be added after experiments complete.]}
+
+\subsection{Observations}
+
+% TODO: Document any discrepancies, surprises, or lessons learned
+\textit{[Observations to be added after experiments complete.]}
+
+\section{Challenges and Lessons Learned}
+
+% TODO: Document setup challenges, debugging experiences
+\textit{[To be completed.]}
+
+\section{Conclusion}
+
+% TODO: Summarize findings
+\textit{[To be completed.]}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
