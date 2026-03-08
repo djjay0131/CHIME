@@ -18,3 +18,4 @@ exp/backup
 *.zip
 .cloudlab-state.json
 .DS_Store
+.venv/
