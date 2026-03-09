@@ -4,7 +4,7 @@
 **Start Date:** 2026-03-10
 **Target Date:** 2026-03-26 (Part One Due)
 **Presentation:** 2026-04-07 to 2026-04-09 (Week 12)
-**Status:** Not Started
+**Status:** In Progress
 
 **Prerequisites:** Sprint 01 (Documentation Bootstrap - Complete)
 
@@ -14,45 +14,51 @@
 
 ## Day-by-Day Timeline
 
-### Week 1: Setup and Build (Mar 10-16)
+### Pre-Week: Reservation Setup (Mar 8-16)
 
 | Day | Date | Focus | Exit Criteria |
 | --- | ---- | ----- | ------------- |
-| 1 | Mon Mar 10 | Reserve 10x r650 nodes on CloudLab; set up SSH keys | Reservation confirmed; passwordless SSH between all nodes |
-| 2 | Tue Mar 11 | Install MLNX OFED, libibverbs, librdmacm, rdma-core; verify RDMA | `ibv_devinfo` shows active device on every node |
-| 3 | Wed Mar 12 | Install memcached, CMake, g++, Python3, Paramiko, matplotlib; configure hugepages | All build tools available; hugepages allocated |
-| 4 | Thu Mar 13 | Clone CHIME + SMART + ROLEX + Marlin to all nodes; configure common.json | Repos present on all nodes; common.json has correct IPs and paths |
-| 5 | Fri Mar 14 | Build all 5 methods on all nodes; fix any compile errors | `ycsb_test` binary produced for CHIME, Sherman; SMART/ROLEX/Marlin build clean |
-| 6 | Sat Mar 15 | Generate YCSB workloads on all nodes in parallel (~1.5h) | Workload files present at configured path on every node |
-| 7 | Sun Mar 16 | Single-node smoke test (1 CN + 1 MN, YCSB C); scale to 3 nodes; scale to 10 nodes | Full-scale YCSB C completes with non-zero throughput |
+| -- | Mar 8 | portal-cli installed, profile created, 2 Clemson reservations submitted | DONE |
+| -- | Mar 9-16 | Wait for reservation approvals; prepare scripts and configs locally | Reservations approved |
 
-### Week 2: Experiments and Results (Mar 17-23)
+### Week 1: Dry Run -- 5x r650 at Clemson (Mar 17-19)
 
 | Day | Date | Focus | Exit Criteria |
 | --- | ---- | ----- | ------------- |
-| 8 | Mon Mar 17 | Start `fig_12.py` in tmux on master node (runs ~7.5h, finishes overnight) | Script running; partial logs confirm progress |
-| 9 | Tue Mar 18 | Verify fig_12 results; run `fig_14.py` (~35m) | fig_12 JSON + PDF in results/; fig_14 complete |
-| 10 | Wed Mar 19 | Run `fig_15a.py` (~44m) and `fig_15b.py` (~40m) | fig_15a + fig_15b results collected |
-| 11 | Thu Mar 20 | Stretch: run `fig_03a.py` (~23m); re-run any failed experiments | All core data collected; stretch data if time allows |
-| 12 | Fri Mar 21 | Parse all results; regenerate figures if needed; verify against paper | Publication-quality PDFs for all core figures |
-| 13 | Sat Mar 22 | Set up LaTeX report repo; configure GitHub Pages CI for PDF builds | CI pipeline builds PDF on push |
-| 14 | Sun Mar 23 | Write report: introduction, experimental setup, methodology | Draft of first three sections |
+| 1 | Mon Mar 17 | SSH setup; install RDMA stack + deps on 5 nodes; configure hugepages; clone repos | All 5 nodes accessible; `ibv_devinfo` passes; repos cloned |
+| 2 | Tue Mar 18 | Build all methods; generate YCSB workloads; smoke test (1 CN + 1 MN); scale to 5 nodes | Builds succeed; YCSB C produces throughput > 0 at 5-node scale |
+| 3 | Wed Mar 19 | Run subset of experiments at 5-node scale (fig_14, fig_15a, fig_15b); collect preliminary data | Preliminary results for smaller experiments; identify any issues before full run |
 
-### Week 3: Report and Submission (Mar 24-26)
+### Week 2: Report Drafting (Mar 20-26)
 
 | Day | Date | Focus | Exit Criteria |
 | --- | ---- | ----- | ------------- |
-| 15 | Mon Mar 24 | Write report: results sections (one per figure), comparison with paper | Results sections drafted with embedded figures |
-| 16 | Tue Mar 25 | Write report: analysis of discrepancies, conclusion; review and polish | Near-final draft; all sections complete |
-| 17 | Wed Mar 26 | Final review; submit Part One report | **Part One submitted** |
+| 4 | Thu Mar 20 | Parse dry-run results; set up LaTeX report repo + GitHub Pages CI | CI pipeline builds PDF; preliminary figures generated |
+| 5 | Fri Mar 21 | Write report: introduction, experimental setup, methodology | Draft of first three sections |
+| 6 | Sat Mar 22 | Write report: preliminary results sections (from dry run data) | Results sections drafted with available figures |
+| 7 | Sun Mar 23 | Write report: analysis, comparison with paper (noting partial scale) | Analysis sections drafted |
+| 8 | Mon Mar 24 | Write report: conclusion; review and polish | Near-final draft |
+| 9 | Tue Mar 25 | Final review; prepare for submission | Draft ready for submission |
+| 10 | Wed Mar 26 | **Part One report submitted** (with dry-run results; full results for presentation) | **Part One submitted** |
 
-### Week 4-5: Presentation (Mar 27 - Apr 9)
+### Week 3-4: Full Run -- 10x r650 at Clemson (Mar 27 - Apr 3)
 
 | Day | Date | Focus | Exit Criteria |
 | --- | ---- | ----- | ------------- |
-| -- | Mar 27-31 | Create Beamer slide deck: paper summary, setup, methodology, results | Slide outline complete; key figures inserted |
-| -- | Apr 1-4 | Complete slides; add comparison plots; write speaker notes | Full 15-20 min deck ready |
-| -- | Apr 5-6 | Rehearse presentation; prepare Q&A notes on CHIME internals | Comfortable with timing and material |
+| 11 | Thu Mar 27 | SSH setup on 10 nodes; install RDMA + deps; clone repos; build all methods | All 10 nodes ready; builds succeed |
+| 12 | Fri Mar 28 | Generate YCSB workloads (all nodes); smoke test; scale to 10 nodes | Full-scale YCSB C completes |
+| 13 | Sat Mar 29 | Start `fig_12.py` in tmux (~7.5h overnight run) | Script running; partial logs confirm progress |
+| 14 | Sun Mar 30 | Verify fig_12 results; run `fig_14.py` (~35m); run `fig_15a.py` (~44m) | fig_12 + fig_14 + fig_15a results |
+| 15 | Mon Mar 31 | Run `fig_15b.py` (~40m); stretch: `fig_03a.py` (~23m); re-run any failures | All experiment data collected at full scale |
+| 16 | Tue Apr 1 | Parse full-scale results; generate final figures; update report with full results | Publication-quality PDFs for all figures |
+| -- | Apr 2-3 | Buffer days for re-runs or troubleshooting | All data finalized |
+
+### Week 5: Presentation (Apr 4-9)
+
+| Day | Date | Focus | Exit Criteria |
+| --- | ---- | ----- | ------------- |
+| -- | Apr 4-5 | Create Beamer slide deck with full-scale results | Slide outline complete; full-scale figures inserted |
+| -- | Apr 6 | Rehearse presentation; prepare Q&A notes on CHIME internals | Comfortable with timing and material |
 | -- | Apr 7-9 | **Present in class (Week 12)** | **Presentation delivered** |
 
 ---
@@ -61,15 +67,27 @@
 
 ### Task 1: CloudLab Reservation and SSH Setup
 
-- [ ] Submit CloudLab reservation for 10x r650 nodes (7-10 day window starting Mar 10)
+- [x] Install portal-cli and verify API connectivity (endpoint: boss.emulab.net:43794)
+- [x] Create CloudLab profile for r650 experiment
+- [x] Submit CloudLab reservations (using Clemson cluster -- r650 unavailable at Utah)
+  - [x] Dry run reservation: 5x r650 at Clemson, Mar 17-19 (pending approval)
+  - [x] Full run reservation: 10x r650 at Clemson, Mar 27-Apr 3 (pending approval)
+- [ ] Reservations approved and confirmed
 - [ ] Verify hardware: ConnectX-6 NICs, sufficient DRAM (256 GB per node)
 - [ ] Generate SSH key pair and distribute to all nodes
 - [ ] Verify passwordless SSH from master node to all other nodes
 - [ ] Verify passwordless SSH between all node pairs (needed by Paramiko)
 
+**Notes:**
+- Using **Clemson cluster** instead of Utah due to r650 unavailability at Utah.
+- Full run reservation (Mar 27-Apr 3) starts 1 day after Part One due date (Mar 26).
+  This means the written report may need to be submitted before full-scale experiments complete.
+  However, the presentation window (Apr 7-9) provides buffer for incorporating full results.
+- Both reservations are pending approval as of Mar 8.
+
 **Acceptance Criteria:**
 
-- 10 r650 nodes reserved and accessible
+- r650 nodes reserved and accessible at Clemson
 - `ssh node-N hostname` works without password from master for all N
 
 ---
@@ -288,12 +306,17 @@
 - Use paper's default parameters (span=64, neighborhood=8, hotspot buffer=30MB)
 - Run all experiment scripts unmodified from master node only
 - LaTeX report with GitHub Pages CI for automatic PDF deployment
+- **Clemson cluster** (not Utah) for r650 nodes due to availability constraints
+- **Two-phase execution:** dry run (5 nodes, Mar 17-19) for validation + preliminary data; full run (10 nodes, Mar 27-Apr 3) for publication-quality results
+- Report submitted Mar 26 with dry-run data; presentation (Apr 7-9) uses full-scale data
 
 ---
 
 ## Dependencies
 
-- CloudLab r650 node availability (10 nodes, 7-10 day reservation)
+- CloudLab r650 node availability at **Clemson cluster** (Utah r650s unavailable)
+  - Dry run: 5x r650, Mar 17-19
+  - Full run: 10x r650, Mar 27-Apr 3
 - RDMA hardware and MLNX OFED driver compatibility
 - Working memcached for metadata coordination
 - YCSB workload generator (included in repo at `ycsb/generate_full_workloads.sh`)
@@ -305,13 +328,15 @@
 
 | Risk | Mitigation | Status |
 | ---- | ---------- | ------ |
-| CloudLab reservation fails or expires mid-experiment | Reserve Day 1; request extension proactively; save results frequently | Open |
+| Clemson reservation approval delayed or denied | Both reservations submitted early (Mar 8); follow up with CloudLab support; explore other clusters if needed | Open |
+| r650 nodes at Clemson differ from Utah r650s (firmware, NIC config) | Test thoroughly during dry run (Mar 17-19); document any differences | Open |
+| Full run starts after Part One due date (Mar 27 > Mar 26) | Submit report with dry-run (5-node) results; update with full-scale results for presentation (Apr 7-9) | **Active** |
 | RDMA stack incompatibility on current CloudLab images | Use known-good r650 profile; check OFED version against CHIME requirements | Open |
 | Sibling repos fail to build | Build each independently; check their READMEs for deps; fix CMake issues | Open |
 | fig_12.py hangs or crashes mid-run (~7.5h) | Run in tmux; monitor logs periodically; re-run individual workloads if partial failure | Open |
 | Results differ significantly from paper | Document honestly; analyze root causes (HW gen, NIC firmware, network topology) | Open |
 | GitHub Pages CI setup takes too long | Fallback: manual PDF build and submission; CI is nice-to-have | Open |
-| Time pressure: 17 working days to submission | Prioritize core experiments (fig_12 first); report and slides can overlap | Open |
+| Dry run (5 nodes) insufficient to reproduce all figures accurately | Focus dry run on smaller experiments (fig_14, fig_15a/b); save fig_12 for full run | Open |
 
 ---
 
@@ -319,10 +344,12 @@
 
 | Date | Milestone | Weight |
 | ---- | --------- | ------ |
-| Mar 10 | CloudLab reservation confirmed | Gate |
-| Mar 14 | All methods build on all nodes | Gate |
-| Mar 16 | Full-scale smoke test passes | Gate |
-| Mar 19 | All core experiment data collected (fig_12, 14, 15a, 15b) | Gate |
-| Mar 21 | Final figures generated | Checkpoint |
-| Mar 26 | **Part One report submitted** | **Deadline** |
-| Apr 7-9 | **Presentation delivered** | **Deadline** |
+| Mar 8 | Reservations submitted at Clemson (portal-cli + profile) | DONE |
+| Mar 16 | Reservations approved | Gate |
+| Mar 17 | Dry run begins: 5x r650 at Clemson | Gate |
+| Mar 19 | Dry-run experiments complete; preliminary data collected | Gate |
+| Mar 26 | **Part One report submitted** (with dry-run results) | **Deadline** |
+| Mar 27 | Full run begins: 10x r650 at Clemson | Gate |
+| Mar 31 | All core experiment data collected at full scale (fig_12, 14, 15a, 15b) | Gate |
+| Apr 1 | Full-scale figures generated | Checkpoint |
+| Apr 7-9 | **Presentation delivered** (with full-scale results) | **Deadline** |

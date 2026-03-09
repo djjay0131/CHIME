@@ -58,13 +58,18 @@ The experiment scripts (e.g., `fig_12.py`) drive all five methods automatically.
 
 ### Experimental Setup (Paper Section 5.1)
 
-- **Machines:** 10 CloudLab r650 nodes
+- **Machines:** 10 CloudLab r650 nodes at **Clemson cluster** (Utah r650s unavailable)
 - **Hardware per node:** 2x 36-core Intel Xeon CPUs, 256 GB DRAM, 100 Gbps Mellanox ConnectX-6 NIC
 - **Network:** 100 Gbps Ethernet switch
 - **CN config:** 4 GB DRAM cache, 64 CPU cores (each core = 1 client thread)
 - **MN config:** 64 GB DRAM, 1 CPU core
 - **Workloads:** YCSB with 8-byte keys and 8-byte values, 60M entries, Zipfian distribution
 - **YCSB workloads:** LOAD (100% insert), A (50/50 search/update), B (95/5 search/update), C (100% search), D (95/5 search/insert), E (95/5 scan/insert)
+
+**Reservation Strategy (updated 2026-03-08):**
+- Dry run: 5x r650 at Clemson, Mar 17-19 (for setup validation and preliminary experiments)
+- Full run: 10x r650 at Clemson, Mar 27-Apr 3 (for full-scale reproduction)
+- Both reservations submitted via portal-cli (API endpoint: boss.emulab.net:43794); pending approval
 
 ### Build and Run Pipeline
 
@@ -238,7 +243,7 @@ The scripts handle this automatically; no manual sed commands needed.
 
 | Risk | Impact | Mitigation | Status |
 |------|--------|------------|--------|
-| CloudLab nodes unavailable for 7-10 days | Blocks all experiments | Reserve Day 1; extend if needed; have backup node type | Open |
+| CloudLab nodes unavailable for 7-10 days | Blocks all experiments | Two reservations submitted at Clemson (dry run + full run); portal-cli configured | Mitigated (pending approval) |
 | RDMA stack / NIC firmware issues | Blocks experiments | Use CloudLab's known-good r650 profile; check OFED version | Open |
 | Build failures on sibling repos | Missing baseline comparisons | Build each repo independently; fix CMake issues per-repo | Open |
 | fig_12.py takes >7.5h or hangs | Delays timeline | Run overnight in tmux; monitor with periodic log checks | Open |
@@ -259,3 +264,5 @@ The scripts handle this automatically; no manual sed commands needed.
 ---
 
 **Revision:** 2026-03-07 - Final specification after Q&A. Upgraded from CHIME-only to full 5-method comparison. Added Figures 15a/15b. Added report and presentation deliverable details. Resolved all open questions.
+
+**Revision:** 2026-03-08 - Updated cluster from Utah to Clemson due to r650 unavailability. Added two-phase reservation strategy (dry run 5x Mar 17-19, full run 10x Mar 27-Apr 3). Noted timeline impact: report submitted with dry-run data, presentation uses full-scale results.

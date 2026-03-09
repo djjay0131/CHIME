@@ -45,16 +45,16 @@ from pathlib import Path
 # Configuration
 # ──────────────────────────────────────────────
 
-CLOUDLAB_PORTAL = "https://www.cloudlab.us:43794"
+CLOUDLAB_PORTAL = "https://boss.emulab.net:43794"
 PROJECT = os.environ.get("CLOUDLAB_PROJECT", "CS620426SP")
 PROFILE_NAME = "chime-r650"  # we'll create this profile
-PROFILE_PROJECT = ""  # set to your project or PortalProfiles
+PROFILE_PROJECT = "CS620426SP"
 
 # r650 node specs
 NODE_TYPE = "r650"
 NODE_COUNT = 10
 DURATION_HOURS = 168  # 7 days
-CLUSTER_URN = "urn:publicid:IDN+cloudlab.us+authority+cm"  # Utah cluster for r650
+CLUSTER_URN = "urn:publicid:IDN+clemson.cloudlab.us+authority+cm"  # Clemson cluster for r650
 
 # Repos to clone on each node
 REPOS = [

@@ -7,6 +7,7 @@ on:
       - 'report/**'
       - 'presentation/**'
       - '.github/workflows/build-and-deploy.yml'
+      - 'construction/sprints/**'
   workflow_dispatch:
 
 permissions:
@@ -51,35 +52,107 @@ jobs:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>CHIME Experiment Reproduction - CS 6204</title>
             <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 50px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 860px; margin: 50px auto; padding: 0 20px; line-height: 1.6; color: #333; }
               h1 { border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
+              h2 { margin-top: 0; color: #1e40af; }
               a { color: #2563eb; text-decoration: none; }
               a:hover { text-decoration: underline; }
               .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 15px 0; }
-              .card h2 { margin-top: 0; }
               .meta { color: #64748b; font-size: 0.9em; }
+              table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+              th { background: #1e40af; color: white; padding: 8px 12px; text-align: left; }
+              td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+              tr:last-child td { border-bottom: none; }
+              .done   { color: #16a34a; font-weight: 600; }
+              .active { color: #d97706; font-weight: 600; }
+              .future { color: #64748b; }
+              .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+              .badge-green  { background: #dcfce7; color: #16a34a; }
+              .badge-yellow { background: #fef9c3; color: #a16207; }
+              .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+              .badge-gray   { background: #f1f5f9; color: #475569; }
             </style>
           </head>
           <body>
             <h1>CHIME Experiment Reproduction</h1>
-            <p class="meta">CS 6204 - Advanced Topics in Systems | Spring 2026 | Virginia Tech</p>
-            <p>Reproducing experiments from <em>CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory</em> (SOSP '24)</p>
+            <p class="meta">CS 6204 Advanced Topics in Systems &mdash; Spring 2026 &mdash; Virginia Tech</p>
+            <p>Reproducing experiments from <em>CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory</em> (SOSP &rsquo;24) on 10&times; CloudLab r650 nodes with 100&nbsp;Gbps RDMA.</p>
 
             <div class="card">
-              <h2>Progress Report</h2>
-              <p>Part One results: 5-method comparison on 10 CloudLab r650 nodes with RDMA.</p>
-              <p><a href="report.pdf">Download Report (PDF)</a></p>
+              <h2>Project Timeline</h2>
+              <table>
+                <tr>
+                  <th>Dates</th><th>Phase</th><th>Status</th><th>Notes</th>
+                </tr>
+                <tr>
+                  <td>Mar 8</td>
+                  <td>CloudLab reservations submitted</td>
+                  <td><span class="badge badge-green">Done</span></td>
+                  <td>Clemson cluster; dry-run approved</td>
+                </tr>
+                <tr>
+                  <td>Mar 9&ndash;16</td>
+                  <td>Pre-work: scripts, build pipeline, profiles</td>
+                  <td><span class="badge badge-yellow">In Progress</span></td>
+                  <td>Clemson profile, exp scripts, SSH keys</td>
+                </tr>
+                <tr>
+                  <td>Mar 17&ndash;19</td>
+                  <td>Dry run &mdash; 5&times; r650 Clemson</td>
+                  <td><span class="badge badge-blue">Approved</span></td>
+                  <td>Build all 5 methods, generate YCSB, smoke test</td>
+                </tr>
+                <tr>
+                  <td>Mar 20&ndash;26</td>
+                  <td>Report draft (Part One due Mar 26)</td>
+                  <td><span class="badge badge-gray">Upcoming</span></td>
+                  <td>LaTeX report with dry-run / partial results</td>
+                </tr>
+                <tr>
+                  <td>Mar 27&ndash;Apr 3</td>
+                  <td>Full run &mdash; 10&times; r650 Clemson</td>
+                  <td><span class="badge badge-gray">Reserved</span></td>
+                  <td>Figs 12, 14, 15a, 15b; all 5 methods (~10h total)</td>
+                </tr>
+                <tr>
+                  <td>Apr 4&ndash;6</td>
+                  <td>Finalize report &amp; slides with full results</td>
+                  <td><span class="badge badge-gray">Upcoming</span></td>
+                  <td>Update figures, analysis, Beamer presentation</td>
+                </tr>
+                <tr>
+                  <td>Apr 7&ndash;9</td>
+                  <td>Part One presentation (Week 12)</td>
+                  <td><span class="badge badge-gray">Upcoming</span></td>
+                  <td>15&ndash;20 min Beamer, 10% of grade</td>
+                </tr>
+                <tr>
+                  <td>Late Apr</td>
+                  <td>Part Two: CXL port (presentation)</td>
+                  <td><span class="badge badge-gray">Upcoming</span></td>
+                  <td>&mdash;</td>
+                </tr>
+                <tr>
+                  <td>May 5</td>
+                  <td>Final report due</td>
+                  <td><span class="badge badge-gray">Upcoming</span></td>
+                  <td>&mdash;</td>
+                </tr>
+              </table>
             </div>
 
             <div class="card">
-              <h2>Presentation</h2>
-              <p>Part One presentation slides (Beamer, 15-20 minutes).</p>
-              <p><a href="presentation.pdf">Download Slides (PDF)</a></p>
+              <h2>Scope</h2>
+              <p><strong>Methods compared:</strong> CHIME, Sherman, SMART, ROLEX, SMART-SC</p>
+              <p><strong>Target figures:</strong> 12 (throughput-latency, ~7.5h), 14 (cache, ~35m), 15a (~44m), 15b (~40m) &mdash; stretch: Figure 3a</p>
+              <p><strong>Infrastructure:</strong> 10&times; CloudLab r650 (Intel Xeon, 256GB DRAM, ConnectX-6 100Gbps RDMA) at Clemson cluster</p>
             </div>
 
             <div class="card">
-              <h2>Source</h2>
-              <p><a href="https://github.com/djjay0131/CHIME">GitHub Repository</a></p>
+              <h2>Deliverables</h2>
+              <p><a href="report.pdf">&#x1F4C4; Progress Report (PDF)</a> &mdash; Part One: 5-method comparison results</p>
+              <p><a href="presentation.pdf">&#x1F4CA; Presentation Slides (PDF)</a> &mdash; 15&ndash;20 min Beamer</p>
+              <p><a href="https://github.com/djjay0131/CHIME">&#x1F4BB; GitHub Repository</a></p>
             </div>
           </body>
           </html>

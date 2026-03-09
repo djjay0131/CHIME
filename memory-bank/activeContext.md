@@ -18,15 +18,25 @@ Presentation: April 7-9, 2026 (Week 12)
 
 ## Immediate Next Steps
 
-1. Submit CloudLab reservation for 10x r650 nodes on March 10 (Day 1 -- critical gate)
-2. Install RDMA stack and dependencies on all nodes (Days 2-3)
-3. Clone all four repos (CHIME, SMART, ROLEX, Marlin) to all nodes (Day 4)
-4. Build all 5 methods and generate YCSB workloads (Days 4-5)
-5. Smoke test at single-node, then scale to full 10 nodes (Days 6-7)
-6. Run fig_12.py overnight on Day 8; remaining experiments Days 9-10
+1. Wait for Clemson reservation approvals (dry run b11e25ca Mar 17-19, full run 1cf9c2b4 Mar 27-Apr 3)
+2. Prepare Clemson-specific setup scripts (any differences from Utah environment)
+3. Update experiment scripts for Clemson IPs once nodes are assigned
+4. Install RDMA stack and dependencies on all nodes once dry-run reservation starts
+5. Clone all four repos (CHIME, SMART, ROLEX, Marlin) to all nodes
+6. Build all 5 methods and generate YCSB workloads
+7. Smoke test at single-node during dry run, then scale to full 10 nodes in full run
 
 ## Recent Decisions
 
+- 2026-03-08: CloudLab API endpoint resolved: `boss.emulab.net:43794`
+- 2026-03-08: Targeting Clemson cluster (not Utah) -- r650 unavailable at Utah (stale prediction data since Mar 3)
+- 2026-03-08: Clemson r650 confirmed working via 1-node test provisioning
+- 2026-03-08: CloudLab profile `chime-r650-utah` created (ID: 1d025108) -- targets Clemson despite name
+- 2026-03-08: CloudLab profile script updated for Clemson CM
+- 2026-03-08: Two reservations submitted at Clemson:
+  - Dry run: 5x r650, Mar 17-19 (ID: b11e25ca) -- pending approval
+  - Full run: 10x r650, Mar 27-Apr 3 (ID: 1cf9c2b4) -- pending approval
+- 2026-03-08: Cleaned up 5 test profiles from CloudLab
 - 2026-03-07: Full 5-method comparison confirmed (CHIME, Sherman, SMART, ROLEX, Marlin) -- not CHIME-only
 - 2026-03-07: Core experiments: Figures 12, 14, 15a, 15b; stretch: Figure 3a
 - 2026-03-07: All sibling repos confirmed compatible (SMART from dmemsys, ROLEX/Marlin from River861, Sherman built from CHIME repo)
@@ -41,4 +51,7 @@ Presentation: April 7-9, 2026 (Week 12)
 
 ## Current Blockers
 
-- None yet. First gate: CloudLab reservation on Mar 10.
+- Waiting on Clemson reservation approvals (both pending as of Mar 8).
+- Dry run (b11e25ca) starts Mar 17 if approved; full run (1cf9c2b4) starts Mar 27.
+
+Last Updated: 2026-03-08
