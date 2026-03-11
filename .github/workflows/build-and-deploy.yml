@@ -29,18 +29,19 @@ jobs:
       - name: Build report PDF
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: report/main.tex
-          working_directory: .
+          root_file: main.tex
+          working_directory: report
 
       - name: Build presentation PDF
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: presentation/main.tex
-          working_directory: .
+          root_file: main.tex
+          working_directory: presentation
 
       - name: Prepare deploy directory
         run: |
           mkdir -p docs
+          ls -la report/ presentation/
           cp report/main.pdf docs/report.pdf
           cp presentation/main.pdf docs/presentation.pdf
 
