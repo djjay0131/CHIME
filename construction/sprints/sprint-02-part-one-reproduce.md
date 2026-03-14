@@ -8,7 +8,8 @@
 
 **Prerequisites:** Sprint 01 (Documentation Bootstrap - Complete)
 
-**Design Doc:** [construction/design/part-one-reproduce-experiments.md](../design/part-one-reproduce-experiments.md)
+**Design Doc:** [construction/design/part-one-reproduce-experiments.md](../design/part-one-reproduce-experiments.md)  
+**Setup Checklist:** [construction/scripts/setup-checklist.md](../scripts/setup-checklist.md)
 
 ---
 
@@ -72,7 +73,7 @@
 - [x] Submit CloudLab reservations (using Clemson cluster -- r650 unavailable at Utah)
   - [x] Dry run reservation: 5x r650 at Clemson, Mar 17-19 (pending approval)
   - [x] Full run reservation: 10x r650 at Clemson, Mar 27-Apr 3 (pending approval)
-- [ ] Reservations approved and confirmed
+- [x] Reservations approved and confirmed (dry run b11e25ca APPROVED 2026-03-08)
 - [ ] Verify hardware: ConnectX-6 NICs, sufficient DRAM (256 GB per node)
 - [ ] Generate SSH key pair and distribute to all nodes
 - [ ] Verify passwordless SSH from master node to all other nodes
@@ -83,7 +84,8 @@
 - Full run reservation (Mar 27-Apr 3) starts 1 day after Part One due date (Mar 26).
   This means the written report may need to be submitted before full-scale experiments complete.
   However, the presentation window (Apr 7-9) provides buffer for incorporating full results.
-- Both reservations are pending approval as of Mar 8.
+- Dry run (b11e25ca) approved 2026-03-08. Full run (1cf9c2b4) pending.
+- Pre-work scripts: `script/setup-hugepages.sh`, `script/clone-repos.sh`, `construction/scripts/generate-common-json.py`, `construction/scripts/setup-checklist.md`.
 
 **Acceptance Criteria:**
 

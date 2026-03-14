@@ -22,7 +22,7 @@ sudo make install
 cd ..
 
 # boost
-wget https://jaist.dl.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.zip
+wget -q "https://sourceforge.net/projects/boost/files/boost/1.53.0/boost_1_53_0.zip/download" -O boost_1_53_0.zip
 unzip boost_1_53_0.zip
 cd boost_1_53_0
 ./bootstrap.sh
@@ -73,7 +73,7 @@ make -j
 sudo make install
 cd ../..
 
-ldconfig
+sudo ldconfig
 
 # openjdk-8
 sudo apt-get -y --force-yes install openjdk-8-jdk

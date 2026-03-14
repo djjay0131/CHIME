@@ -73,6 +73,17 @@ git clone https://github.com/River861/ROLEX
     ```
 
 
+## Smoke Test (1 CN + 1 MN)
+
+Before running full experiments, verify setup with a minimal smoke test:
+
+```shell
+cd CHIME/exp
+python3 smoke_test.py
+```
+
+Requires `common.json` with ≥2 nodes, YCSB workloads, and memcached. See `construction/scripts/setup-checklist.md`.
+
 ## Start to Run
 
 > [!important]  

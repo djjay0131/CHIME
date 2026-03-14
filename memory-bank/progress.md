@@ -17,8 +17,18 @@
   - Created CloudLab profile `chime-r650-utah` (ID: 1d025108), updated script for Clemson CM.
   - Tested r650 availability across Utah, Clemson, and Wisconsin clusters.
   - Confirmed Clemson r650 works (1-node test provisioned successfully); Utah r650 unavailable (stale prediction data since Mar 3).
-  - Submitted two reservations at Clemson: dry run 5x r650 Mar 17-19 (b11e25ca), full run 10x r650 Mar 27-Apr 3 (1cf9c2b4). Both pending approval.
+  - Submitted two reservations at Clemson: dry run 5x r650 Mar 17-19 (b11e25ca) — **APPROVED**, full run 10x r650 Mar 27-Apr 3 (1cf9c2b4) — pending.
   - Cleaned up 5 test profiles from CloudLab.
+- Pre-work for Sprint 02 dry run (2026-03-08):
+  - Created `script/setup-hugepages.sh` for hugepage configuration.
+  - Created `script/clone-repos.sh` to clone SMART, ROLEX, Marlin.
+  - Created `construction/scripts/generate-common-json.py` to generate common.json from cluster IPs.
+  - Created `construction/scripts/setup-checklist.md` with day-by-day setup steps.
+- Additional Sprint 02 scripts (2026-03-08):
+  - `script/run-on-nodes.sh` — run a command in parallel across nodes
+  - `script/setKey.py` — parameterized via SETKEY_USER, NODES, NODES_FILE
+  - `exp/smoke_test.py` — minimal 1 CN + 1 MN smoke test (YCSB C)
+  - `generate-common-json.py` now also updates `memcached.conf` with master IP
 
 ## Remaining
 

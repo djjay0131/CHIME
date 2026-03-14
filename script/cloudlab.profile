@@ -1,4 +1,6 @@
-"""10 r650 instances for running CHIME (Clemson cluster)"""
+"""11 r650 instances for running CHIME (Clemson cluster).
+Paper Section 5.1: 10 compute nodes + 1 memory node = 11 total.
+"""
 
 import geni.portal as portal
 import geni.rspec.pg as pg
@@ -8,7 +10,7 @@ pc = portal.Context()
 request = pc.makeRequestRSpec()
 
 CLEMSON_CM = "urn:publicid:IDN+clemson.cloudlab.us+authority+cm"
-NODE_COUNT = 10
+NODE_COUNT = 11
 IMAGE = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU18-64-STD"
 
 ifaces = []

@@ -21,8 +21,8 @@ Presentation: 2026-04-07 to 2026-04-09
 Cluster: Clemson (r650 nodes) -- Utah r650 unavailable
 Profile: `chime-r650-utah` (ID: 1d025108, targets Clemson CM)
 Reservations:
-- Dry run: 5x r650, Mar 17-19 (ID: b11e25ca) -- pending
-- Full run: 10x r650, Mar 27-Apr 3 (ID: 1cf9c2b4) -- pending
+- Dry run: 5x r650, Mar 17-19 (ID: b11e25ca) — approved
+- Full run: 10x r650, Mar 27-Apr 3 (ID: 1cf9c2b4) — pending
 
 Goals:
 
