@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
 Generate exp/params/common.json from cluster configuration.
-Usage:
-  python3 generate-common-json.py --home /users/you --master 10.10.1.2 \
-    --ips 10.10.1.2,10.10.1.1,10.10.1.3,10.10.1.4,10.10.1.5 \
-    --out exp/params/common.json
 
-For dry run (5 nodes): use 5 IPs; first IP = master.
-For full run (10 nodes): use 10 IPs.
+Usage:
+  python3 generate-common-json.py --home /users/you --master 10.10.1.2 \\
+    --ips 10.10.1.2,10.10.1.1,... --out exp/params/common.json
+
+Examples:
+  Dry run (6 nodes: 5 CN + 1 MN):  --ips with 6 IPs, first = master
+  Full run (10 nodes: 9 CN + 1 MN): --ips with 10 IPs
+  11-node paper config (10 CN + 1 MN): --ips with 11 IPs
 """
 
 import argparse

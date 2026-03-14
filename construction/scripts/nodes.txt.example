@@ -1,0 +1,16 @@
+# CloudLab node list template. Copy to nodes.txt and fill in your experiment hostnames.
+# One hostname per line. Used by setKey.py (NODES_FILE=./nodes.txt) and run-on-nodes.sh.
+#
+# Get hostnames from CloudLab dashboard → List View → SSH command or hostname column.
+# Format: node-N.your-experiment.your-project.clemson.cloudlab.us
+#
+# Example for 6-node dry run:
+# node-0.exp12345.myproject.clemson.cloudlab.us
+# node-1.exp12345.myproject.clemson.cloudlab.us
+# node-2.exp12345.myproject.clemson.cloudlab.us
+# node-3.exp12345.myproject.clemson.cloudlab.us
+# node-4.exp12345.myproject.clemson.cloudlab.us
+# node-5.exp12345.myproject.clemson.cloudlab.us
+
+node-0.your-experiment.your-project.clemson.cloudlab.us
+node-1.your-experiment.your-project.clemson.cloudlab.us
