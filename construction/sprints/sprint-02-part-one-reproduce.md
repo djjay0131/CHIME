@@ -102,7 +102,7 @@
 - [ ] Install memcached on master node; verify it starts
 - [ ] Install CMake (>= 3.12), g++ (C++17 support) on all nodes
 - [ ] Install Python3, Paramiko, matplotlib, numpy on master node
-- [ ] Configure hugepages on all nodes (`echo 10240 > /proc/sys/vm/nr_hugepages`)
+- [ ] Configure hugepages on all nodes (`sudo bash setup-hugepages.sh` or `echo 36864 > /proc/sys/vm/nr_hugepages`)
 - [ ] Verify hugepage allocation with `cat /proc/meminfo | grep Huge`
 
 **Acceptance Criteria:**

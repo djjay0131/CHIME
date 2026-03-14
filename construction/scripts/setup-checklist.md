@@ -6,12 +6,17 @@ Use this checklist during the dry run (Mar 17–19) and full run (Mar 27–Apr 3
 
 ### 1. Get node IPs and hostnames
 
-After CloudLab reservation starts, get the node list from the CloudLab dashboard or:
+After CloudLab reservation starts, get the node list from the CloudLab dashboard (List View → node hostnames). Create `nodes.txt` (one hostname per line) for `setKey.py` and `run-on-nodes.sh`:
 
-```bash
-# List nodes (example for 5-node dry run)
-# Nodes appear as node-0, node-1, ... or clnodeXXX.clemson.cloudlab.us
 ```
+node-0.your-experiment.your-project.clemson.cloudlab.us
+node-1.your-experiment.your-project.clemson.cloudlab.us
+node-2.your-experiment.your-project.clemson.cloudlab.us
+...
+```
+
+Template: `construction/scripts/nodes.txt.example`. Copy to `nodes.txt` and fill in your experiment hostnames.
+Or use comma-separated: `node-0.exp.proj.clemson.cloudlab.us,node-1.exp.proj.clemson.cloudlab.us,...`
 
 ### 2. SSH setup
 
@@ -57,6 +62,13 @@ bash script/run-on-nodes.sh "node-0,node-1,..." "cd ~/CHIME/script && bash insta
 # Or run manually on each node
 ```
 
+**Ubuntu 22+:** If `installLibs.sh` fails with pip "externally managed environment" error:
+
+```bash
+export PIP_BREAK_SYSTEM=1
+bash script/installLibs.sh
+```
+
 ### 5. Configure hugepages (each node)
 
 ```bash
@@ -84,13 +96,41 @@ python3 construction/scripts/generate-common-json.py \
   --out exp/params/common.json
 ```
 
-Example for 5-node dry run:
+Example for 6-node dry run (5 CN + 1 MN):
 
 ```bash
 python3 construction/scripts/generate-common-json.py \
   --home /users/$(whoami) \
   --master 10.10.1.2 \
-  --ips 10.10.1.2,10.10.1.1,10.10.1.3,10.10.1.4,10.10.1.5
+  --ips 10.10.1.2,10.10.1.1,10.10.1.3,10.10.1.4,10.10.1.5,10.10.1.6
+```
+
+Example for 10-node full run:
+
+```bash
+python3 construction/scripts/generate-common-json.py \
+  --home /users/$(whoami) \
+  --master 10.10.1.2 \
+  --ips 10.10.1.2,10.10.1.1,10.10.1.3,10.10.1.4,10.10.1.5,10.10.1.6,10.10.1.7,10.10.1.8,10.10.1.9,10.10.1.10
+```
+
+### 7b. Patch experiment params for node count
+
+Figure params (fig_12, fig_14, fig_15a, fig_15b) hardcode CN count. **Run this before experiments:**
+
+| Cluster size | Total nodes | CN count | Command |
+|--------------|-------------|----------|---------|
+| Dry run      | 5 or 6      | 4 or 5   | `python3 construction/scripts/patch-cn-count.py 5` |
+| Full run     | 10          | 9        | `python3 construction/scripts/patch-cn-count.py 9` |
+| 11-node      | 11          | 10       | `python3 construction/scripts/patch-cn-count.py 10` (paper default) |
+
+```bash
+cd ~/CHIME
+# Dry run: 5 CN + 1 MN (if you have 6 nodes) or 4 CN + 1 MN (5 nodes)
+python3 construction/scripts/patch-cn-count.py 5
+
+# Full run (10 nodes): 9 CN + 1 MN
+python3 construction/scripts/patch-cn-count.py 9
 ```
 
 ---
@@ -143,7 +183,7 @@ This builds CHIME, splits workloads for 1 CN, and runs YCSB C. Requires `cluster
 - [ ] `ibv_devinfo` passes on all nodes
 - [ ] `memcached -h` works on master
 - [ ] `cmake --version` >= 3.12
-- [ ] `grep HugePages /proc/meminfo` shows allocated hugepages
+- [ ] `grep HugePages /proc/meminfo` shows allocated hugepages (default: 36864 per paper)
 - [ ] `ls ~/CHIME ~/SMART ~/ROLEX ~/Marlin` on every node
 - [ ] `ssh node-N hostname` without password from master
 - [ ] YCSB C produces throughput > 0 at 1-node scale
