@@ -18,16 +18,17 @@ Presentation: April 7-9, 2026 (Week 12)
 
 ## Immediate Next Steps
 
-1. ~~Wait for Clemson reservation approvals~~ — Dry run approved; full run pending
-2. ~~Prepare Clemson-specific setup scripts~~ — Added: setup-hugepages.sh, clone-repos.sh, generate-common-json.py, setup-checklist.md
-3. When dry run starts (Mar 17): SSH setup, install RDMA+deps, configure common.json with node IPs
-4. Install RDMA stack and dependencies on all nodes once dry-run reservation starts
-5. Clone all four repos (CHIME, SMART, ROLEX, Marlin) to all nodes
-6. Build all 5 methods and generate YCSB workloads
-7. Smoke test at single-node during dry run, then scale to full 10 nodes in full run
+1. ~~Wait for Clemson reservation approvals~~ — Dry run approved; full run approved
+2. ~~Prepare Clemson-specific setup scripts~~ — Done (setup-hugepages, clone-repos, generate-common-json, setup-checklist, day1-runbook, day1-dry-run.sh); PR #2 created
+3. **Dry run (Mar 17–19):** Day 1 — SSH (setKey.py), RDMA check, installLibs, hugepages, clone siblings; generate common.json + patch-cn-count 5. Day 2 — Build all methods, YCSB workloads, smoke_test.py. Day 3 — Run fig_14, fig_15a, fig_15b.
+4. Mar 20–26: Report drafting with dry-run results
+5. Full run (Mar 27–Apr 3): 10 nodes (9 CN + 1 MN), patch-cn-count 9, fig_12 + fig_14 + fig_15a/15b
+
+**Current session handoff:** Repo experiment params (fig_12, fig_14, fig_15a, fig_15b) are already patched for **10-node (9 CN)**. For dry run on cluster, run `patch-cn-count.py 5` after generating common.json. User is connecting via **VSCode SSH** to the cluster. Next actions: SSH to master → pull → create `nodes.txt` → run `setKey.py` → run `day1-dry-run.sh` (optionally with `PIP_BREAK_SYSTEM=1` on Ubuntu 22+) → run `generate-common-json.py` with real IPs → run `patch-cn-count.py 5` for dry run.
 
 ## Recent Decisions
 
+- 2026-03-17: CloudLab prep (PR #2): installLibs fix (PIP_BREAK_SYSTEM for Ubuntu 22+), hugepages 36864 documented, CN-patch usage in setup-checklist and day1-runbook, day1-dry-run.sh one-shot script. Experiment params patched for 10-node (9 CN) in repo; dry run re-patches to 5 CN on cluster.
 - 2026-03-08: CloudLab API endpoint resolved: `boss.emulab.net:43794`
 - 2026-03-08: Targeting Clemson cluster (not Utah) -- r650 unavailable at Utah (stale prediction data since Mar 3)
 - 2026-03-08: Clemson r650 confirmed working via 1-node test provisioning
@@ -56,7 +57,6 @@ Presentation: April 7-9, 2026 (Week 12)
 ## Current Blockers
 
 - 11-node re-run reservation (5488ef67) pending approval (Apr 3-6).
-- `installMLNX.sh` hardcoded for Ubuntu 18.04 — needs update for Clemson OS image.
-- `installLibs.sh` uses deprecated `--force-yes`, old Boost URL, may need `--break-system-packages` on Ubuntu 22.04+.
+- `installMLNX.sh` hardcoded for Ubuntu 18.04 — if Clemson uses Ubuntu 20/22, adjust URL in script.
 
-Last Updated: 2026-03-12
+Last Updated: 2026-03-17

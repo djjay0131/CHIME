@@ -9,7 +9,17 @@
 **Prerequisites:** Sprint 01 (Documentation Bootstrap - Complete)
 
 **Design Doc:** [construction/design/part-one-reproduce-experiments.md](../design/part-one-reproduce-experiments.md)  
-**Setup Checklist:** [construction/scripts/setup-checklist.md](../scripts/setup-checklist.md)
+**Setup Checklist:** [construction/scripts/setup-checklist.md](../scripts/setup-checklist.md)  
+**Scripts README:** [construction/scripts/README.md](../scripts/README.md)
+
+---
+
+## Current state (pre–Day 1)
+
+- **Pre-CloudLab prep done:** `installLibs.sh` fixed (no `--force-yes`, Boost fallback, `PIP_BREAK_SYSTEM` for Ubuntu 22+); hugepages aligned to 36864; CN-patch flow documented; `nodes.txt.example`, `day1-runbook.md`, and `script/day1-dry-run.sh` added. PR #2 created for these changes.
+- **Node count:** 10 total (9 CN + 1 MN). `patch-cn-count.py 9` run locally; `exp/params` fig_12, fig_14, fig_15a, fig_15b are patched for 9 CN; `common.json` has 10 IP placeholders.
+- **Day 1 automation:** Dry run / full run setup is ready: follow [day1-runbook.md](../scripts/day1-runbook.md) and use `NODES_FILE=./nodes.txt bash script/day1-dry-run.sh` after setKey.
+- **Immediate next step:** SSH to master → pull repo → create `nodes.txt` → run `setKey.py` → run `day1-dry-run.sh` → run `generate-common-json.py` with real IPs.
 
 ---
 
@@ -85,7 +95,7 @@
   This means the written report may need to be submitted before full-scale experiments complete.
   However, the presentation window (Apr 7-9) provides buffer for incorporating full results.
 - Dry run (b11e25ca) approved 2026-03-08. Full run (1cf9c2b4) pending.
-- Pre-work scripts: `script/setup-hugepages.sh`, `script/clone-repos.sh`, `construction/scripts/generate-common-json.py`, `construction/scripts/setup-checklist.md`.
+- Pre-work scripts: `script/setup-hugepages.sh`, `script/clone-repos.sh`, `script/day1-dry-run.sh`, `construction/scripts/generate-common-json.py`, `construction/scripts/setup-checklist.md`, `construction/scripts/day1-runbook.md`. Experiment params (fig_12, fig_14, fig_15a, fig_15b) are pre-patched for 10-node (9 CN) in repo.
 
 **Acceptance Criteria:**
 
@@ -131,7 +141,7 @@
 
 ### Task 4: Configure common.json and Build All Methods
 
-- [ ] Update `exp/params/common.json` fields: `home_dir`, `workloads_dir`, `master_ip`, `cluster_ips`
+- [ ] Update `exp/params/common.json` fields: `home_dir`, `workloads_dir`, `master_ip`, `cluster_ips` (use `generate-common-json.py` with real IPs; repo has 10 IP placeholders). Figure params are already patched for 9 CN; for dry run with 5 CN run `patch-cn-count.py 5` first.
 - [ ] Build CHIME: `mkdir build && cd build && cmake .. <CHIME flags> && make -j`
 - [ ] Build Sherman (same repo, different CMake flags): verify binary works
 - [ ] Build SMART in `~/SMART`: follow its build instructions
