@@ -8,7 +8,7 @@ This folder tracks active understanding and documentation work for the CHIME rep
 
 **Project:** CHIME  
 **Goal:** Understand, maintain, and document the SOSP'24 artifact codebase and experiment pipeline  
-**Status:** Documentation bootstrap in progress
+**Status:** CloudLab reproduction in progress — pre-CloudLab prep done; experiment params patched for 10-node (9 CN); Day 1 automation (runbook + day1-dry-run.sh) ready
 
 ## Structure
 

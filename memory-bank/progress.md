@@ -17,7 +17,7 @@
   - Created CloudLab profile `chime-r650-utah` (ID: 1d025108), updated script for Clemson CM.
   - Tested r650 availability across Utah, Clemson, and Wisconsin clusters.
   - Confirmed Clemson r650 works (1-node test provisioned successfully); Utah r650 unavailable (stale prediction data since Mar 3).
-  - Submitted two reservations at Clemson: dry run 5x r650 Mar 17-19 (b11e25ca) — **APPROVED**, full run 10x r650 Mar 27-Apr 3 (1cf9c2b4) — pending.
+  - Submitted two reservations at Clemson: dry run 5x r650 Mar 17-19 (b11e25ca) — **APPROVED**, full run 10x r650 Mar 27-Apr 3 (1cf9c2b4) — **APPROVED** (9 CN + 1 MN).
   - Cleaned up 5 test profiles from CloudLab.
 - Pre-work for Sprint 02 dry run (2026-03-08):
   - Created `script/setup-hugepages.sh` for hugepage configuration.
@@ -29,6 +29,13 @@
   - `script/setKey.py` — parameterized via SETKEY_USER, NODES, NODES_FILE
   - `exp/smoke_test.py` — minimal 1 CN + 1 MN smoke test (YCSB C)
   - `generate-common-json.py` now also updates `memcached.conf` with master IP
+- CloudLab dry-run prep (2026-03-17, PR #2):
+  - installLibs fix for Ubuntu 22+ (PIP_BREAK_SYSTEM documented in setup-checklist and day1-runbook)
+  - Hugepages 36864 in `script/setup-hugepages.sh` and verification steps
+  - CN-patch documentation in setup-checklist (patch-cn-count.py for dry/full/11-node)
+  - `construction/scripts/day1-runbook.md` — Day 1 copy-paste runbook
+  - `script/day1-dry-run.sh` — one-shot Day 1 setup after setKey.py (RDMA check, installLibs, hugepages, clone siblings)
+  - Experiment params (fig_12, fig_14, fig_15a, fig_15b) patched for 10-node cluster (9 CN) via patch-cn-count.py 9
 
 ## Remaining
 
@@ -42,3 +49,5 @@
 - The current docs are intentionally high-level and do not yet explain every low-level correctness mechanism.
 - Some understanding of sibling repositories is still implicit in experiment scripts.
 - CloudLab reservation is the first gate for Sprint 02; if it fails or is delayed, the entire timeline shifts.
+
+Last Updated: 2026-03-17

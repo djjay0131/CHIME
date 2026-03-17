@@ -1,8 +1,10 @@
 # Sprint 02 Setup Checklist
 
-Use this checklist during the dry run (Mar 17–19) and full run (Mar 27–Apr 3).
+Use this checklist during the dry run (Mar 17–19) and full run (Mar 27–Apr 3). **Repo is pre-patched for 10-node (9 CN + 1 MN):** `exp/params` fig_12, fig_14, fig_15a, fig_15b and `common.json` (10 IP placeholders). For dry run with fewer nodes, run `patch-cn-count.py 5` (or 4) before experiments; after full-run setup, params already match 9 CN.
 
 ## Day 1: SSH + RDMA + Repos
+
+**Quick path (after SSH to master):** Pull repo → create `nodes.txt` from CloudLab List View → run `setKey.py` → run `day1-dry-run.sh` → then generate `common.json` with real IPs (step 7).
 
 ### 1. Get node IPs and hostnames
 
@@ -15,7 +17,8 @@ node-2.your-experiment.your-project.clemson.cloudlab.us
 ...
 ```
 
-Template: `construction/scripts/nodes.txt.example`. Copy to `nodes.txt` and fill in your experiment hostnames.
+Template: `construction/scripts/nodes.txt.example`. Copy to `nodes.txt` and fill in your experiment hostnames. **Day 1 runbook:** `construction/scripts/day1-runbook.md`. **One-shot script (after setKey):** `NODES_FILE=./nodes.txt bash script/day1-dry-run.sh`.
+
 Or use comma-separated: `node-0.exp.proj.clemson.cloudlab.us,node-1.exp.proj.clemson.cloudlab.us,...`
 
 ### 2. SSH setup
@@ -116,12 +119,12 @@ python3 construction/scripts/generate-common-json.py \
 
 ### 7b. Patch experiment params for node count
 
-Figure params (fig_12, fig_14, fig_15a, fig_15b) hardcode CN count. **Run this before experiments:**
+Figure params (fig_12, fig_14, fig_15a, fig_15b) hardcode CN count. **Run this before experiments** (repo is currently patched for **10-node / 9 CN**; re-run only if you use a different size):
 
 | Cluster size | Total nodes | CN count | Command |
 |--------------|-------------|----------|---------|
 | Dry run      | 5 or 6      | 4 or 5   | `python3 construction/scripts/patch-cn-count.py 5` |
-| Full run     | 10          | 9        | `python3 construction/scripts/patch-cn-count.py 9` |
+| Full run     | 10          | 9        | `python3 construction/scripts/patch-cn-count.py 9` (already applied in repo) |
 | 11-node      | 11          | 10       | `python3 construction/scripts/patch-cn-count.py 10` (paper default) |
 
 ```bash

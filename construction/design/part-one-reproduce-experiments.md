@@ -71,6 +71,8 @@ The experiment scripts (e.g., `fig_12.py`) drive all five methods automatically.
 - Full run: 10x r650 at Clemson, Mar 27-Apr 3 (for full-scale reproduction)
 - Both reservations submitted via portal-cli (API endpoint: boss.emulab.net:43794); pending approval
 
+**Repo state (as of pre–Day 1):** Experiment params (fig_12, fig_14, fig_15a, fig_15b) are patched for 10-node (9 CN + 1 MN); `common.json` has 10 IP placeholders. Day 1 automation: `construction/scripts/day1-runbook.md` and `script/day1-dry-run.sh`; after SSH and setKey, run the dry-run script then `generate-common-json.py` with real IPs.
+
 ### Build and Run Pipeline
 
 The pipeline is fully automated via Python scripts run from the master node only:
