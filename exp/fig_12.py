@@ -102,6 +102,10 @@ def main(cmd: CMDManager, tp: LogParser):
                 plot_data['X_data'][method].append(tpt)
                 plot_data['Y_data'][method].append(p99_lat)
                 plot_data['BACKUP_data'][method].append(p50_lat)
+                # incremental save after each (method, client_num) point
+                Path(output_path).mkdir(exist_ok=True)
+                with (Path(output_path) / f'fig_{exp_num}_{workload_name}_partial.json').open(mode='w') as f:
+                    json.dump(plot_data, f, indent=2)
         # save data
         Path(output_path).mkdir(exist_ok=True)
         with (Path(output_path) / f'fig_{exp_num}_{workload_name}.json').open(mode='w') as f:

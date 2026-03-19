@@ -1,0 +1,11 @@
+<div class="pdf-viewer">
+  <div class="pdf-actions">
+    <a href="{{ .Get 0 | relURL }}" class="btn" target="_blank">View PDF</a>
+    <a href="{{ .Get 0 | relURL }}" class="btn btn-secondary" download>Download</a>
+  </div>
+  <object data="{{ .Get 0 | relURL }}" type="application/pdf" class="pdf-embed">
+    <p>PDF preview not available in this browser.
+      <a href="{{ .Get 0 | relURL }}">Download the PDF</a> instead.
+    </p>
+  </object>
+</div>

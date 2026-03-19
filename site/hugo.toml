@@ -1,0 +1,27 @@
+baseURL = "https://djjay0131.github.io/CHIME/"
+languageCode = "en-us"
+title = "CHIME Reproduction"
+
+[params]
+  description = "Reproducing CHIME (SOSP '24) on CloudLab r650 — CS 6204, Virginia Tech Spring 2026"
+  github = "https://github.com/djjay0131/CHIME"
+  course = "CS 6204 Advanced Topics in Systems"
+  institution = "Virginia Tech, Spring 2026"
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[[menus.main]]
+  name = "Home"
+  url = "/"
+  weight = 1
+
+[[menus.main]]
+  name = "Paper"
+  url = "/paper/"
+  weight = 2
+
+[[menus.main]]
+  name = "Presentation"
+  url = "/presentation/"
+  weight = 3

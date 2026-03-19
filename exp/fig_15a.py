@@ -104,6 +104,10 @@ def main(cmd: CMDManager, tp: LogParser):
 
             print_GOOD(f"[FINISHED POINT] method={method_maps[method]} workload={workload} tpt={tpt} p50_lat={p50_lat} p99_lat={p99_lat}")
             plot_data['Y_data'][method_maps[method]][workload] = {metrics[0]: tpt, metrics[1]: p50_lat, metrics[2]: p99_lat}
+            # incremental save after each data point (guards against reservation expiry)
+            Path(output_path).mkdir(exist_ok=True)
+            with (Path(output_path) / f'fig_{exp_num}_partial.json').open(mode='w') as f:
+                json.dump(plot_data, f, indent=2)
     # save data
     Path(output_path).mkdir(exist_ok=True)
     with (Path(output_path) / f'fig_{exp_num}.json').open(mode='w') as f:

@@ -95,6 +95,10 @@ def main(cmd: CMDManager, tp: LogParser):
             print_GOOD(f"[FINISHED POINT] method={method} workload_name={workload_name} consumed_cache_size={consumed_cache_size} consumed_hot_buffer_size={consumed_hot_buffer_size}")
             plot_data['Y_data'][method][str(workload_name)[:-1]] = consumed_cache_size
             plot_data['BACKUP_data'][method][str(workload_name)[:-1]] = consumed_hot_buffer_size
+            # incremental save after each data point (guards against reservation expiry)
+            Path(output_path).mkdir(exist_ok=True)
+            with (Path(output_path) / f'fig_{exp_num}_partial.json').open(mode='w') as f:
+                json.dump(plot_data, f, indent=2)
     # save data
     Path(output_path).mkdir(exist_ok=True)
     with (Path(output_path) / f'fig_{exp_num}.json').open(mode='w') as f:

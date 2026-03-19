@@ -20,3 +20,6 @@ exp/backup
 .DS_Store
 .venv/
 files/cloudlab.jwt
+site/static/pdfs/
+site/public/
+.hugo_build.lock

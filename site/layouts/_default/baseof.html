@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
+  <meta name="description" content="{{ with .Description }}{{ . }}{{ else }}{{ .Site.Params.description }}{{ end }}">
+  <link rel="stylesheet" href="{{ "css/main.css" | relURL }}">
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="site-title" href="{{ "/" | relURL }}">{{ .Site.Title }}</a>
+      <ul>
+        {{ range .Site.Menus.main }}
+        <li>
+          <a href="{{ .URL | relURL }}"{{ if eq $.RelPermalink .URL }} class="active"{{ end }}>
+            {{ .Name }}
+          </a>
+        </li>
+        {{ end }}
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    {{ block "main" . }}{{ end }}
+  </main>
+
+  <footer>
+    <p>
+      {{ .Site.Params.course }} &mdash; {{ .Site.Params.institution }}
+      &nbsp;&middot;&nbsp;
+      <a href="{{ .Site.Params.github }}">GitHub</a>
+    </p>
+  </footer>
+</body>
+</html>
