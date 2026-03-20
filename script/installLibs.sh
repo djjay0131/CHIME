@@ -1,5 +1,5 @@
 #!/bin/bash
-# Dependencies for CHIME experiments. Tested on Ubuntu 18.04 (CloudLab r650).
+# Dependencies for CHIME experiments. Tested on Ubuntu 18.04/20.04 (CloudLab r650/r6525).
 # On Ubuntu 22+: if pip fails with "externally managed environment", run:
 #   export PIP_BREAK_SYSTEM=1
 # before this script, or add --break-system-packages to pip3 install commands.

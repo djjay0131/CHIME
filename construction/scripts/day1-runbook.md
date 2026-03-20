@@ -125,10 +125,24 @@ python3 construction/scripts/generate-common-json.py \
 
 ---
 
-## 8. Patch for 5 CN (dry run)
+## 8. Patch CN count
+
+For **11-node r6525 run (10 CN + 1 MN)** — already committed in repo as default:
 
 ```bash
-cd ~/CHIME
+# Verify current count (should already be 10):
+python3 construction/scripts/patch-cn-count.py 10
+```
+
+For **10-node r650 run (9 CN + 1 MN)** — full run Mar 27-Apr 3:
+
+```bash
+python3 construction/scripts/patch-cn-count.py 9
+```
+
+For **dry run (5 CN + 1 MN)** — historical, for reference:
+
+```bash
 python3 construction/scripts/patch-cn-count.py 5
 ```
 

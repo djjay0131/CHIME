@@ -47,14 +47,14 @@ from pathlib import Path
 
 CLOUDLAB_PORTAL = "https://boss.emulab.net:43794"
 PROJECT = os.environ.get("CLOUDLAB_PROJECT", "CS620426SP")
-PROFILE_NAME = "chime-r650"  # we'll create this profile
+PROFILE_NAME = "chime-r6525-clemson"  # 11x r6525 at Clemson, Ubuntu 20.04
 PROFILE_PROJECT = "CS620426SP"
 
-# r650 node specs
-NODE_TYPE = "r650"
-NODE_COUNT = 10
-DURATION_HOURS = 168  # 7 days
-CLUSTER_URN = "urn:publicid:IDN+clemson.cloudlab.us+authority+cm"  # Clemson cluster for r650
+# r6525 node specs (pre-deadline run Mar 23-26; 10 CN + 1 MN = 11 nodes)
+NODE_TYPE = "r6525"
+NODE_COUNT = 11
+DURATION_HOURS = 58  # ~58h window (Mar 23 14:00 UTC - Mar 26 00:00 UTC)
+CLUSTER_URN = "urn:publicid:IDN+clemson.cloudlab.us+authority+cm"  # Clemson cluster
 
 # Repos to clone on each node
 REPOS = [

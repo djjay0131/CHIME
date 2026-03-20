@@ -1,7 +1,7 @@
 {
     "methods": ["CHIME", "Sherman", "ROLEX", "SMART"],
     "workload_names": ["40M", "60M", "80M", "100M", "120M"],
-    "client_num": [9, 64],
+    "client_num": [10, 64],
     "MN_num": 1,
     "key_size": "randint",
     "value_size": 8,

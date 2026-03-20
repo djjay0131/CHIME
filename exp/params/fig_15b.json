@@ -2,7 +2,7 @@
     "methods": ["ROLEX", "R +Hopscotch Leaf Node", "R +Vacancy-Aware Lock", "R +Metadata Replication", "R +Speculative Leaf Read"],
     "workload_names": {"YCSB A": "a", "YCSB B": "b", "YCSB C": "c", "YCSB D": "d"},
     "target_epoch": 9,
-    "client_num": [9, 32],
+    "client_num": [10, 32],
     "MN_num": 1,
     "key_size": "randint",
     "value_size": 8,

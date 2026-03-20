@@ -10,13 +10,21 @@
 #   - The master node must be reachable (reservation active)
 #
 # Usage:
-#   bash scripts/rsync-results.sh
+#   MASTER="djjay@nodeX.exp.proj.clemson.cloudlab.us" bash scripts/rsync-results.sh
+#
+# The MASTER env var must be set to the SSH user@host of the master node.
+# Get the hostname from the CloudLab experiment List View after provisioning.
 #
 # Results are synced to: exp/results/ (local copy)
 
 set -euo pipefail
 
-MASTER="djjay@clnode255.clemson.cloudlab.us"
+if [ -z "${MASTER:-}" ]; then
+    echo "ERROR: Set MASTER env var to the master node SSH address."
+    echo "  e.g., MASTER=\"djjay@nodeX.exp.proj.clemson.cloudlab.us\" bash scripts/rsync-results.sh"
+    exit 1
+fi
+
 SSH_KEY="$HOME/.ssh/cloudlab_chime"
 REMOTE_RESULTS="~/CHIME/exp/results/"
 LOCAL_RESULTS="$(dirname "$0")/../exp/results/"
