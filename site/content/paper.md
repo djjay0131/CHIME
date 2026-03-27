@@ -5,7 +5,7 @@ subtitle: "Reproducing CHIME: A Cache-Efficient and High-Performance Hybrid Inde
 
 CS 6204 Advanced Topics in Systems — Virginia Tech, Spring 2026.
 
-**Download:** [Jason_Cusati_Project_Part_One.pdf](/pdfs/Jason_Cusati_Project_Part_One.pdf)
+**Download:** <a href="/CHIME/pdfs/Jason_Cusati_Project_Part_One.pdf">Jason_Cusati_Project_Part_One.pdf</a>
 
 {{< pdf "/pdfs/Jason_Cusati_Project_Part_One.pdf" >}}
 
