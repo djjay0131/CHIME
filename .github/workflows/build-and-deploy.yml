@@ -42,6 +42,7 @@ jobs:
       - name: Copy PDFs into Hugo static dir
         run: |
           mkdir -p site/static/pdfs
+          cp report/main.pdf site/static/pdfs/Jason_Cusati_Project_Part_One.pdf
           cp report/main.pdf site/static/pdfs/report.pdf
           cp presentation/main.pdf site/static/pdfs/presentation.pdf
 

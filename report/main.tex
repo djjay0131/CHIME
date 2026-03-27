@@ -13,10 +13,20 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage[numbers]{natbib}
+\usepackage{enumitem}
+\usepackage{multirow}
 
 \geometry{margin=1in}
 
-\title{Reproducing CHIME: A Cache-Efficient and High-Performance\\Hybrid Index on Disaggregated Memory}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  columns=fullflexible,
+}
+
+\title{Reproducing CHIME: A Cache-Efficient and High-Performance\\Hybrid Index on Disaggregated Memory\\[0.5em]\large Progress Report --- Part One}
 \author{Jason Cusati (\texttt{djjay@vt.edu})\\
 CS 6204 --- Advanced Topics in Systems\\
 Virginia Tech, Spring 2026}
@@ -27,126 +37,269 @@ Virginia Tech, Spring 2026}
 \maketitle
 
 \begin{abstract}
-This report documents the reproduction of experiments from the CHIME paper (SOSP '24), which proposes a hybrid B+ tree with hopscotch hashing for disaggregated memory. We reproduced the key performance results on 10 CloudLab r650 nodes with 100~Gbps RDMA, comparing CHIME against four baselines (Sherman, SMART, ROLEX, and SMART-SC). We present throughput-latency curves (Figure~12), cache consumption analysis (Figure~14), and factor analysis (Figures~15a/15b) from the original paper, along with observations on reproducibility and performance differences.
+This report documents our progress in reproducing experiments from the CHIME paper (SOSP~'24), which proposes a hybrid B+~tree with hopscotch hashing for disaggregated memory. We describe the four core experiments planned for reproduction on CloudLab r650 nodes with 100\,Gbps RDMA, the challenges encountered during initial reservation attempts and an alternative hardware run on r6525 nodes, and lessons learned about RDMA hardware compatibility. We present a detailed plan for the upcoming full-scale experiment run (March~27--April~3) and outline Part~Two's direction: porting CHIME to CXL-based disaggregated memory.
 \end{abstract}
 
+%% ============================================================
 \section{Introduction}
+%% ============================================================
 
-CHIME~\cite{chime2024} is a cache-efficient and high-performance hybrid index for disaggregated memory (DM). It combines B+ tree internal nodes with hopscotch-hashing-based leaf nodes to simultaneously achieve low cache consumption and low read amplifications. The paper introduces three key techniques: (1) three-level optimistic synchronization, (2) access-aggregated metadata management, and (3) hotness-aware speculative read.
+CHIME~\cite{chime2024} is a cache-efficient, high-performance hybrid index for disaggregated memory (DM). It combines B+~tree internal nodes with hopscotch-hashing-based leaf nodes to simultaneously achieve low cache consumption and low read amplification on one-sided RDMA. The paper introduces three key techniques: (1)~vacancy-aware lock for conflict-free concurrent access, (2)~access-aggregated metadata management via scatter-gather across cache lines, and (3)~hotness-aware speculative read that exploits temporal locality.
 
-This report documents our effort to reproduce the paper's main experimental results on CloudLab infrastructure as part of the CS~6204 course project.
+The CHIME authors evaluate their system against four baselines---Sherman~\cite{sherman2022} (B+~tree), SMART~\cite{smart2023} (adaptive radix tree), ROLEX~\cite{rolex2023} (learned index), and SMART-SC (SMART with sufficient cache)---across the YCSB benchmark suite on a 10-node CloudLab cluster with 100\,Gbps RDMA.
 
-\subsection{Scope}
+This report documents our reproduction effort as part of the CS~6204 course project. We describe:
+\begin{enumerate}[nosep]
+    \item The experiments we plan to reproduce and why they are central to the paper's claims (\S\ref{sec:experiments}).
+    \item Our experience with CloudLab reservations and initial hardware availability (\S\ref{sec:reservations}).
+    \item A detailed account of attempting the experiments on alternative r6525 hardware (\S\ref{sec:r6525}).
+    \item Our plan for the upcoming r650 run (\S\ref{sec:plan}).
+    \item A forward-looking discussion of Part~Two: porting CHIME to CXL (\S\ref{sec:cxl}).
+\end{enumerate}
 
-We reproduced the following experiments from the original paper:
-\begin{itemize}
-    \item \textbf{Figure 12:} YCSB throughput-latency comparison across 6 workloads (LOAD, A--E) with 5 methods
-    \item \textbf{Figure 14:} Cache consumption comparison across varying dataset sizes
-    \item \textbf{Figure 15a:} Factor analysis starting from Sherman (B+ tree baseline)
-    \item \textbf{Figure 15b:} Factor analysis starting from ROLEX (learned index baseline)
+%% ============================================================
+\section{Experiments Planned for Reproduction}
+\label{sec:experiments}
+%% ============================================================
+
+We target the four core experiments from CHIME's evaluation (Section~5 of the paper). These collectively demonstrate the system's throughput, latency, cache efficiency, and the contribution of each optimization technique. Table~\ref{tab:experiments} summarizes the experiments.
+
+\begin{table}[H]
+\centering
+\caption{Core experiments planned for reproduction.}
+\label{tab:experiments}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Figure} & \textbf{Description} & \textbf{Est.\ Runtime} & \textbf{Methods} \\
+\midrule
+12 & Throughput-latency curves (6 YCSB workloads) & $\sim$7.5\,h & All 5 \\
+14 & Cache consumption vs.\ dataset size & $\sim$35\,min & CHIME, Sherman, ROLEX, SMART \\
+15a & Factor analysis: Sherman $\to$ CHIME & $\sim$44\,min & 6 ablation variants \\
+15b & Factor analysis: ROLEX $\to$ CHIME & $\sim$40\,min & 5 ablation variants \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Figure~12: YCSB Throughput-Latency Comparison}
+
+The primary evaluation compares all five methods across six YCSB workloads: LOAD (100\%~insert), A (50/50~read/update), B (95/5~read/update), C (100\%~read), D (95/5~read/insert), and E (95\%~scan, 5\%~insert). Each method is tested at multiple thread counts per compute node, sweeping the throughput-latency trade-off curve. This experiment is the paper's central result, demonstrating that CHIME achieves the highest throughput at comparable or lower latency across all workloads.
+
+\textbf{Configuration:} 9~compute nodes (CN), 1~memory node (MN), 60M~keys, 8-byte key/value, Zipfian distribution, 10~measurement epochs. Per the paper, each method uses different thread-count sweep points tuned to its scalability characteristics.
+
+\subsection{Figure~14: Cache Consumption}
+
+This experiment measures the internal-node cache size consumed by each method as the dataset grows from 40M to 120M entries. CHIME's hopscotch leaf nodes require caching only internal nodes, whereas Sherman must cache both internal and leaf nodes. This validates the paper's claim of CHIME's superior cache efficiency.
+
+\textbf{Configuration:} Fixed 64~threads per CN, ``sufficient cache'' mode (60\,GB cache per node to avoid eviction), dataset sizes 40M--120M in 20M increments.
+
+\subsection{Figure~15a: Factor Analysis (Sherman-Based)}
+
+Starting from the Sherman baseline, this experiment incrementally enables each CHIME optimization---hopscotch leaf node, vacancy-aware lock, metadata replication, sibling-based validation, and speculative leaf read---measuring the throughput improvement contributed by each technique across workloads LOAD, A, B, C, and D.
+
+\subsection{Figure~15b: Factor Analysis (ROLEX-Based)}
+
+Analogous to Figure~15a but starting from the ROLEX (learned index) baseline. This demonstrates that CHIME's techniques generalize beyond B+~trees and also improve learned-index-based DM systems. The ablation covers workloads A, B, C, and D.
+
+\subsection{Additional Experiments (Time Permitting)}
+
+We also prepared three additional experiments to probe CHIME's sensitivity to configuration parameters:
+\begin{itemize}[nosep]
+    \item \textbf{Cache sensitivity:} Varying cache size (10\,MB, 100\,MB, 1000\,MB) on YCSB~C.
+    \item \textbf{Value size scaling:} Testing 8\,B, 64\,B, and 256\,B values on YCSB~A.
+    \item \textbf{Access distribution:} Comparing Zipfian vs.\ uniform distribution on YCSB~C to isolate caching benefits.
 \end{itemize}
 
-\section{Experimental Setup}
+%% ============================================================
+\section{CloudLab Reservations and Hardware Availability}
+\label{sec:reservations}
+%% ============================================================
 
-\subsection{Hardware}
+The CHIME paper's experiments require a cluster of 11~nodes (10~CN + 1~MN) with 100\,Gbps RDMA NICs. The original target hardware is CloudLab r650 nodes at Clemson, which feature Intel Xeon processors and Mellanox ConnectX-6 with InfiniBand.
 
-All experiments were conducted on CloudLab r650 nodes:
-\begin{itemize}
-    \item \textbf{CPU:} 2$\times$ Intel Xeon (36 cores each)
-    \item \textbf{Memory:} 256~GB DDR4
-    \item \textbf{NIC:} Mellanox ConnectX-6 (100~Gbps)
-    \item \textbf{Network:} 100~Gbps Ethernet
-    \item \textbf{Cluster:} 10 nodes total
+\subsection{Reservation Timeline}
+
+Table~\ref{tab:reservations} summarizes our CloudLab reservation history.
+
+\begin{table}[H]
+\centering
+\caption{CloudLab reservation timeline. All reservations target the Clemson cluster.}
+\label{tab:reservations}
+\begin{tabular}{@{}llllp{4cm}@{}}
+\toprule
+\textbf{Dates} & \textbf{Nodes} & \textbf{Type} & \textbf{Status} & \textbf{Purpose} \\
+\midrule
+Mar 17--19 & 6$\times$ r650 & Dry run & Expired & Initial setup validation \\
+Mar 23--26 & 11$\times$ r6525 & Pre-deadline & Used & Alternative hardware attempt \\
+Mar 27--Apr 3 & 10$\times$ r650 & Full run & Approved & Primary experiment run \\
+Apr 3--6 & 11$\times$ r650 & Re-run & Approved & Backup (full 10~CN + 1~MN) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Why r650 Nodes Were Unavailable Pre-Deadline}
+
+The Clemson r650 nodes were fully booked from mid-March through March~27. Utah cluster availability data was stale (no predictions since March~3). We submitted reservation requests starting March~8, but the earliest approved r650 slot began March~27---after the Part~One report deadline of March~26.
+
+To avoid submitting a report with no experimental progress, we reserved 11$\times$~r6525 nodes for March~23--26 as an alternative. The r6525 nodes use AMD EPYC processors with ConnectX-5/ConnectX-6~Dx NICs over \emph{Ethernet} (RoCE) rather than InfiniBand.
+
+%% ============================================================
+\section{The r6525 Experience: Lessons in RDMA Portability}
+\label{sec:r6525}
+%% ============================================================
+
+Our attempt to run CHIME experiments on r6525 nodes was ultimately unsuccessful due to RoCE hardware limitations, but yielded valuable insights into RDMA portability that are directly relevant to the paper's broader context and our Part~Two CXL work.
+
+\subsection{Hardware Differences}
+
+Table~\ref{tab:hardware} summarizes the key differences between the paper's target hardware and the r6525 alternative.
+
+\begin{table}[H]
+\centering
+\caption{Hardware comparison: r650 (paper target) vs.\ r6525 (pre-deadline alternative).}
+\label{tab:hardware}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Specification} & \textbf{r650} & \textbf{r6525} \\
+\midrule
+CPU & Intel Xeon Gold 6338N & AMD EPYC 7513 \\
+Cores & 2$\times$32 (64 physical) & 2$\times$32 (64 physical) \\
+Memory & 256\,GB DDR4 & 256\,GB DDR4 \\
+RDMA NIC & ConnectX-5 (mlx5\_2) & ConnectX-5 (mlx5\_0) \\
+\textbf{Link Layer} & \textbf{InfiniBand} & \textbf{Ethernet (RoCE)} \\
+Root Disk & $\sim$450\,GB & 16\,GB \\
+NVMe & Available & 1.5\,TB (unmounted by default) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The most critical difference is the \textbf{RDMA link layer}. The r650 nodes use InfiniBand, which provides lossless transport natively. The r6525 nodes use RoCE (RDMA over Converged Ethernet), which requires switch-level configuration (Priority Flow Control, ECN) for lossless operation.
+
+\subsection{Setup and Configuration Challenges}
+
+We successfully automated the full setup pipeline using the CloudLab Portal API and SSH-based orchestration. The following issues were encountered and resolved:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Node failure:} 1 of 11 nodes (clnode304) had non-functional RDMA hardware. We excluded it, running 9~CN + 1~MN = 10~nodes with CN count patched from 10 to 9.
+
+    \item \textbf{Disk space:} The r6525 root partition is only 16\,GB. YCSB workload generation produces intermediate files up to 6\,GB each, filling the disk. We mounted 1.5\,TB NVMe drives on all nodes and persisted final workloads to the project NFS share for cross-experiment reuse.
+
+    \item \textbf{YCSB compatibility:} YCSB 0.17.0's Python~2 launcher script fails on Python~3-only nodes. We patched the syntax and updated the Java package namespace from \texttt{com.yahoo.ycsb} to \texttt{site.ycsb}.
+
+    \item \textbf{RDMA device index:} The code hardcodes \texttt{IB\_DEV\_NAME\_IDX~=~'2'} (targeting \texttt{mlx5\_2} on r650). On r6525, the active device is \texttt{mlx5\_0}. Incorrect device selection caused segmentation faults that exhausted the kernel's mlx5 command queue, requiring a full cluster reboot.
+
+    \item \textbf{CPU core binding:} \texttt{CPU\_PHYSICAL\_CORE\_NUM} was hardcoded to 72 (r650 value). The r6525 has 64 physical cores. Directory threads would attempt to bind to non-existent cores.
+
+    \item \textbf{Memcached coordination:} The restart script used SSH-to-self via internal IPs (\texttt{10.10.1.x}) that don't exist on r6525's public-only network, causing Paramiko timeouts and infinite retry loops.
+
+    \item \textbf{Paramiko connection staleness:} Long-running builds ($\sim$5~min) caused Paramiko SSH transports to go stale, failing subsequent remote commands. We added connection health checks with automatic reconnection.
+\end{enumerate}
+
+\subsection{The RoCE Blocker}
+
+After resolving all software-level issues, we discovered the fundamental blocker: \textbf{RoCE RDMA transmit was non-functional}. The kernel counter \texttt{port\_xmit\_packets} remained at zero despite \texttt{port\_rcv\_packets} incrementing normally. The RDMA GID table showed both link-local (GID~index~1) and routable IPv4-mapped (GID~index~3) entries; we tested both without success.
+
+We attribute this to the CloudLab Clemson switch infrastructure lacking the PFC (Priority Flow Control) and ECN (Explicit Congestion Notification) configuration required for lossless RoCE transport. Without lossless guarantees, RoCE's RDMA send operations fail silently at the NIC hardware level.
+
+\textbf{Outcome:} After $\sim$36~hours of debugging across 11 distinct issues, we concluded that the r6525 nodes cannot support CHIME's RDMA workload. The r650 InfiniBand nodes remain the only viable hardware on CloudLab for this experiment.
+
+\subsection{Value of the r6525 Attempt}
+
+Despite producing no benchmark data, the r6525 experience contributed significantly:
+\begin{itemize}[nosep]
+    \item \textbf{All setup automation is debugged and tested.} Scripts for CloudLab API interaction, node configuration, workload generation, and experiment orchestration are production-ready.
+    \item \textbf{YCSB workloads are pre-generated} and persisted on the project NFS share, saving $\sim$3~hours on future runs.
+    \item \textbf{Hardware-specific configuration parameters} (\texttt{IB\_DEV\_NAME\_IDX}, \texttt{MLX\_GID}, \texttt{CPU\_PHYSICAL\_CORE\_NUM}) are documented, enabling rapid adaptation to the r650 hardware.
+    \item \textbf{The RoCE vs.\ InfiniBand finding} is directly relevant to CHIME's portability story and motivates the CXL direction in Part~Two.
 \end{itemize}
 
-\subsection{Configuration}
+%% ============================================================
+\section{Plan for r650 Run (March 27 -- April 3)}
+\label{sec:plan}
+%% ============================================================
 
-Following the paper's experimental setup (Section~5.1):
-\begin{itemize}
-    \item Compute nodes (CNs): 4~GB local cache, 64 cores (1 client per core)
-    \item Memory node (MN): 64~GB DRAM, 1 CPU core
-    \item YCSB workloads: 60M entries, 8-byte keys, 8-byte values, Zipfian distribution
+Our approved reservation provides 10$\times$~r650 nodes at Clemson for 7~days. The r650 hardware matches the paper's experimental setup (ConnectX-5/6, InfiniBand link layer) and was used in prior successful dry runs.
+
+\subsection{Estimated Timeline}
+
+\begin{table}[H]
+\centering
+\caption{Planned experiment schedule on r650 nodes.}
+\label{tab:schedule}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Phase} & \textbf{Duration} & \textbf{Tasks} \\
+\midrule
+Setup & $\sim$30\,min & SSH keys, hugepages, repos, workload symlink from NFS \\
+Validation & $\sim$15\,min & ibv\_devinfo, single-node smoke test \\
+Figure~15b & $\sim$40\,min & ROLEX factor analysis (4 workloads $\times$ 5 methods) \\
+Figure~15a & $\sim$44\,min & Sherman factor analysis (5 workloads $\times$ 6 methods) \\
+Figure~12 & $\sim$7.5\,h & Full throughput-latency curves (6 workloads $\times$ 5 methods) \\
+Figure~14 & $\sim$35\,min & Cache consumption (5 dataset sizes $\times$ 4 methods) \\
+Extra experiments & $\sim$80\,min & Cache sensitivity, value scaling, distribution study \\
+\midrule
+\textbf{Total} & $\sim$10.5\,h & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Key Differences from r6525 Run}
+
+Based on lessons learned, the r650 run will use:
+\begin{itemize}[nosep]
+    \item \texttt{IB\_DEV\_NAME\_IDX = '2'} (r650's active RDMA device is \texttt{mlx5\_2})
+    \item \texttt{MLX\_GID = 1} (InfiniBand uses GID index~1)
+    \item \texttt{CPU\_PHYSICAL\_CORE\_NUM = 72} (r650's actual core count; note: the paper hardcodes this value)
+    \item Patched \texttt{cmd\_manager.py} with Paramiko auto-reconnect
+    \item Patched \texttt{restartMemc.sh} for local execution (no SSH-to-self)
+    \item Pre-generated YCSB workloads from project NFS
 \end{itemize}
 
-\subsection{Software}
+\subsection{Contingency}
 
-\begin{itemize}
-    \item CHIME artifact: forked from \texttt{dmemsys/CHIME}
-    \item SMART baseline: \texttt{dmemsys/SMART}
-    \item ROLEX baseline: \texttt{River861/ROLEX} (CHIME authors' reimplementation)
-    \item Sherman baseline: built from CHIME repo with different CMake flags
-    \item Mellanox OFED drivers, memcached for metadata coordination
+If the March~27 reservation encounters issues, we have a backup reservation (11$\times$~r650, April~3--6) with the correct 10~CN + 1~MN configuration.
+
+%% ============================================================
+\section{Part Two: Porting CHIME to CXL}
+\label{sec:cxl}
+%% ============================================================
+
+Part~Two of the project investigates porting CHIME from RDMA-based disaggregated memory to CXL (Compute Express Link). This direction is motivated by industry trends toward CXL-attached memory pools as an alternative to RDMA-based disaggregation.
+
+\subsection{Motivation}
+
+CHIME's design is tightly coupled to RDMA semantics: one-sided reads/writes, doorbell-based signaling, and hardware-offloaded atomic operations. CXL~3.0 offers load/store semantics with cache coherence, fundamentally changing the performance model:
+
+\begin{itemize}[nosep]
+    \item \textbf{Latency:} CXL memory access is $\sim$200--400\,ns (vs.\ $\sim$2--5\,$\mu$s for RDMA round-trips). This reduces the benefit of CHIME's read-amplification optimizations.
+    \item \textbf{Coherence:} CXL provides hardware cache coherence, potentially simplifying CHIME's optimistic concurrency control.
+    \item \textbf{Atomics:} CXL supports standard CPU atomics on remote memory, whereas RDMA requires verb-based atomic operations.
 \end{itemize}
 
-\section{Results}
+\subsection{Research Questions}
 
-\subsection{Figure 12: YCSB Throughput-Latency}
+\begin{enumerate}[nosep]
+    \item Which CHIME optimizations remain beneficial under CXL's lower-latency, coherent access model?
+    \item Can hopscotch hashing's single-read leaf access be exploited to minimize CXL's per-cacheline transfer overhead?
+    \item How does CHIME's performance scale with CXL's bandwidth constraints relative to RDMA?
+\end{enumerate}
 
-% TODO: Include reproduced Figure 12 plots
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=\textwidth]{figures/fig_12.pdf}
-%     \caption{Reproduced performance comparison of range indexes on DM (cf. paper Figure 12).}
-%     \label{fig:12}
-% \end{figure}
+\subsection{Approach}
 
-\textit{[Results to be added after experiments complete.]}
+Our r6525 RoCE experience---where the same index code failed due to transport-layer differences---demonstrates exactly the kind of portability challenge that a CXL port would address more fundamentally. We plan to:
+\begin{enumerate}[nosep]
+    \item Characterize the RDMA verb usage in CHIME's critical path.
+    \item Design a CXL abstraction layer that maps CHIME's remote memory operations to load/store semantics.
+    \item Evaluate on emulated CXL (NUMA-based or QEMU CXL simulation).
+    \item Compare performance characteristics against the RDMA baseline from Part~One.
+\end{enumerate}
 
-\subsection{Figure 14: Cache Consumption}
-
-% TODO: Include reproduced Figure 14 plot
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.5\textwidth]{figures/fig_14.pdf}
-%     \caption{Reproduced cache consumption comparison (cf. paper Figure 14).}
-%     \label{fig:14}
-% \end{figure}
-
-\textit{[Results to be added after experiments complete.]}
-
-\subsection{Figure 15: Factor Analysis}
-
-% TODO: Include reproduced Figure 15a and 15b plots
-% \begin{figure}[H]
-%     \centering
-%     \begin{subfigure}[b]{0.48\textwidth}
-%         \includegraphics[width=\textwidth]{figures/fig_15a.pdf}
-%         \caption{Starting from Sherman (B+ tree).}
-%         \label{fig:15a}
-%     \end{subfigure}
-%     \hfill
-%     \begin{subfigure}[b]{0.48\textwidth}
-%         \includegraphics[width=\textwidth]{figures/fig_15b.pdf}
-%         \caption{Starting from ROLEX (learned index).}
-%         \label{fig:15b}
-%     \end{subfigure}
-%     \caption{Reproduced factor analysis for CHIME techniques (cf. paper Figure 15).}
-%     \label{fig:15}
-% \end{figure}
-
-\textit{[Results to be added after experiments complete.]}
-
-\section{Analysis}
-
-\subsection{Comparison with Paper Results}
-
-% TODO: Add comparison table and analysis
-\textit{[Analysis to be added after experiments complete.]}
-
-\subsection{Observations}
-
-% TODO: Document any discrepancies, surprises, or lessons learned
-\textit{[Observations to be added after experiments complete.]}
-
-\section{Challenges and Lessons Learned}
-
-% TODO: Document setup challenges, debugging experiences
-\textit{[To be completed.]}
-
+%% ============================================================
 \section{Conclusion}
+%% ============================================================
 
-% TODO: Summarize findings
-\textit{[To be completed.]}
+We have made substantial progress toward reproducing CHIME's experimental results, despite hardware availability challenges that prevented pre-deadline data collection. Our infrastructure is fully automated and debugged through extensive testing on r6525 nodes, YCSB workloads are pre-generated and persisted, and all hardware-specific configuration issues are documented. The upcoming r650 run (March~27--April~3) is well-positioned to produce the full set of experimental results within the first day.
+
+The r6525 experience, while producing no benchmark data, provided valuable insights into RDMA portability across link layers---a finding that directly motivates our Part~Two investigation into CXL-based disaggregated memory.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
