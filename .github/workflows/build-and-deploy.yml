@@ -33,6 +33,14 @@ jobs:
           root_file: main.tex
           working_directory: report
 
+      - name: Build presentation diagrams
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: "*.tex"
+          glob_root_file: true
+          working_directory: presentation/diagrams
+          latexmk_use_lualatex: true
+
       - name: Build presentation PDF
         uses: xu-cheng/latex-action@v3
         with:
