@@ -17,6 +17,9 @@ sudo apt-get -y install cmake
 # memcached
 sudo apt-get -y install memcached libmemcached-dev
 
+# perftest (provides ib_read_lat, ib_write_lat for RDMA connectivity validation)
+sudo apt-get -y install perftest
+
 # numa
 sudo apt-get -y install libnuma-dev
 

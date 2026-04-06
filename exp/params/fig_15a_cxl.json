@@ -1,0 +1,14 @@
+{
+    "methods": ["Sherman", "Sherman+Hopscotch", "Sherman+Vacancy", "Sherman+Metadata", "Sherman+Sibling", "CHIME"],
+    "workload_names": {"YCSB LOAD": "la", "YCSB A": "a", "YCSB B": "b", "YCSB C": "c", "YCSB D": "d"},
+    "client_num": [1, 32],
+    "MN_num": 0,
+    "key_size": "randint",
+    "value_size": 8,
+    "cache_size": 100,
+    "span_size": {"Sherman": 64, "Sherman+Hopscotch": 64, "Sherman+Vacancy": 64, "Sherman+Metadata": 64, "Sherman+Sibling": 64, "CHIME": 64},
+    "epsilon": 16,
+    "neighbor_size": 8,
+    "hotspot_buffer_size": 30,
+    "_comment": "CXL config: 1 node, Sherman-based ablation study."
+}

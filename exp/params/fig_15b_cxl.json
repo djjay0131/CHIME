@@ -1,0 +1,14 @@
+{
+    "methods": ["ROLEX", "ROLEX+Hopscotch", "ROLEX+Vacancy", "ROLEX+Metadata", "CHIME"],
+    "workload_names": {"YCSB A": "a", "YCSB B": "b", "YCSB C": "c", "YCSB D": "d"},
+    "client_num": [1, 32],
+    "MN_num": 0,
+    "key_size": "randint",
+    "value_size": 8,
+    "cache_size": 100,
+    "span_size": {"ROLEX": 16, "ROLEX+Hopscotch": 16, "ROLEX+Vacancy": 16, "ROLEX+Metadata": 16, "CHIME": 64},
+    "epsilon": 16,
+    "neighbor_size": 8,
+    "hotspot_buffer_size": 30,
+    "_comment": "CXL config: 1 node, ROLEX-based ablation study."
+}
