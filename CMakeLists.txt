@@ -6,8 +6,21 @@ project(CHIME)
 set(CMAKE_C_FLAGS "-Wall -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-but-set-variable -Wsign-compare -O3")  # -O3
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17")
 
+# CXL Transport Backend (declare before use)
+option (USE_CXL "Use CXL (NUMA-emulated) transport instead of RDMA" OFF)
+
 #Link Options
-set(LINKS_FLAGS "-lnuma -lcityhash -lboost_coroutine -lboost_context -lpthread -libverbs -lmemcached -ltbb")
+if(USE_CXL)
+    set(LINKS_FLAGS "-lnuma -lcityhash -lpthread -ltbb")
+else()
+    set(LINKS_FLAGS "-lnuma -lcityhash -lboost_coroutine -lboost_context -lpthread -libverbs -lmemcached -ltbb")
+endif()
+
+if(USE_CXL)
+    add_definitions(-DUSE_CXL)
+else()
+    remove_definitions(-DUSE_CXL)
+endif()
 
 #Env Options
 option (STATIC_MN_IP "Use static MNs according the IPs of the nodes" OFF)
@@ -166,6 +179,23 @@ set(COMMON_SRC ${PROJECT_SOURCE_DIR}/src)
 
 #Used by both server and clients
 file(GLOB_RECURSE COMMON_FILE ${COMMON_SRC}/*.cpp)
+if(USE_CXL)
+    # Exclude RDMA-only sources (they #include <infiniband/verbs.h>)
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/rdma/.*\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/DSM\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/DSMKeeper\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/DirectoryConnection\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/Directory\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/Keeper\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/ThreadConnection\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/AbstractMessageConnection\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/RawMessageConnection\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/RdmaCache\\.cpp$")
+else()
+    # Exclude CXL-only sources
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/CxlTransport\\.cpp$")
+    list(FILTER COMMON_FILE EXCLUDE REGEX ".*/CxlDSM\\.cpp$")
+endif()
 add_library(CHIME STATIC ${COMMON_FILE})
 link_libraries(CHIME)
 

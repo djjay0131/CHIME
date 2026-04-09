@@ -1,6 +1,12 @@
 #ifndef __DSM_H__
 #define __DSM_H__
 
+// CXL transport backend: when USE_CXL is defined, CxlDSM replaces DSM
+// with a NUMA-emulated transport (no RDMA, no coroutines).
+#ifdef USE_CXL
+#include "CxlDSM.h"
+#else
+
 #include <atomic>
 
 #include "RdmaCache.h"
@@ -261,4 +267,5 @@ inline void DSM::free(const GlobalAddress& addr, int size) {
   local_allocators[addr.nodeID][0].free(addr, size);
 }
 
+#endif /* !USE_CXL */
 #endif /* __DSM_H__ */

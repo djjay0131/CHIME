@@ -13,7 +13,21 @@
 
 #include "Debug.h"
 #include "HugePageAlloc.h"
+
+#ifndef USE_CXL
 #include "Rdma.h"
+#else
+// Minimal Rdma.h types needed by CxlDSM (no libibverbs dependency)
+#define ON_CHIP_SIZE 128
+struct RdmaOpRegion {
+  uint64_t source;
+  uint64_t dest;
+  uint64_t size;
+  uint32_t lkey;
+  uint32_t remoteRKey;
+  bool is_on_chip;
+};
+#endif
 
 #include "WRLock.h"
 
@@ -68,11 +82,17 @@ inline int bits_in(std::uint64_t u) {
   return bs.count();
 }
 
+#ifndef USE_CXL
 #include <boost/coroutine2/all.hpp>
 #include <boost/crc.hpp>
 
 using CoroPush = boost::coroutines2::coroutine<int>::push_type;
 using CoroPull = boost::coroutines2::coroutine<int>::pull_type;
+#else
+// Stubs — coroutines are not used in CXL mode (all ops are synchronous)
+struct CoroPush {};
+struct CoroPull {};
+#endif
 
 using CoroQueue = std::queue<uint16_t>;
 
