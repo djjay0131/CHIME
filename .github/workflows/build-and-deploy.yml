@@ -44,7 +44,7 @@ jobs:
       - name: Build presentation PDF
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: main.tex
+          root_file: main-v2.tex
           working_directory: presentation
 
       - name: Copy PDFs into Hugo static dir
@@ -52,7 +52,7 @@ jobs:
           mkdir -p site/static/pdfs
           cp report/main.pdf site/static/pdfs/Jason_Cusati_Project_Part_One.pdf
           cp report/main.pdf site/static/pdfs/report.pdf
-          cp presentation/main.pdf site/static/pdfs/presentation.pdf
+          cp presentation/main-v2.pdf site/static/pdfs/presentation.pdf
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
