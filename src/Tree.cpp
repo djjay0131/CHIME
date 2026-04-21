@@ -2308,6 +2308,21 @@ re_read:
 
 
 void Tree::run_coroutine(GenFunc gen_func, WorkFunc work_func, int coro_cnt, Request* req, int req_num) {
+#ifdef USE_CXL
+  // CXL mode: synchronous execution, no coroutines. coro_cnt is ignored; the
+  // caller's thread drives a single request generator until need_stop is set.
+  RequstGen *gen = gen_func(dsm, req, req_num, 0, 1);
+  Timer op_timer;
+  auto thread_id = dsm->getMyThreadID();
+  while (!need_stop) {
+    auto r = gen->next();
+    op_timer.begin();
+    work_func(this, r, nullptr);
+    auto us_10 = op_timer.end() / 100;
+    if (us_10 >= LATENCY_WINDOWS) us_10 = LATENCY_WINDOWS - 1;
+    latency[thread_id][0][us_10]++;
+  }
+#else
   assert(coro_cnt <= MAX_CORO_NUM);
   // define coroutines
   for (int i = 0; i < coro_cnt; ++i) {
@@ -2332,9 +2347,11 @@ void Tree::run_coroutine(GenFunc gen_func, WorkFunc work_func, int coro_cnt, Req
       workers[next_coro_id](next_coro_id);
     }
   }
+#endif
 }
 
 
+#ifndef USE_CXL
 void Tree::coro_worker(CoroPull &sink, RequstGen *gen, WorkFunc work_func) {
   Timer coro_timer;
   auto thread_id = dsm->getMyThreadID();
@@ -2355,6 +2372,7 @@ void Tree::coro_worker(CoroPull &sink, RequstGen *gen, WorkFunc work_func) {
     sink();
   }
 }
+#endif
 
 void Tree::statistics() {
 #ifdef TREE_ENABLE_CACHE

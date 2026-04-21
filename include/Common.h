@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <array>
 #include <atomic>
 #include <queue>
 #include <bitset>
@@ -89,9 +90,14 @@ inline int bits_in(std::uint64_t u) {
 using CoroPush = boost::coroutines2::coroutine<int>::push_type;
 using CoroPull = boost::coroutines2::coroutine<int>::pull_type;
 #else
-// Stubs — coroutines are not used in CXL mode (all ops are synchronous)
+// Stubs — coroutines are not used in CXL mode (all ops are synchronous).
+// CoroPull provides a no-op get() because Tree.cpp calls sink->get() through
+// null-guarded expressions; the call is unreachable but must compile.
 struct CoroPush {};
-struct CoroPull {};
+struct CoroPull {
+  uint16_t get() const { return 0; }
+  void operator()() const {}  // yield — no-op in sync mode
+};
 #endif
 
 using CoroQueue = std::queue<uint16_t>;

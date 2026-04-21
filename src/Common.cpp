@@ -19,6 +19,10 @@ void bindCore(uint16_t core) {
 }
 
 char *getIP() {
+#ifdef USE_CXL
+    static char localhost[] = "127.0.0.1";
+    return localhost;
+#else
     struct ifreq ifr;
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -29,6 +33,7 @@ char *getIP() {
     close(fd);
 
     return inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr);
+#endif
 }
 
 char *getMac() {

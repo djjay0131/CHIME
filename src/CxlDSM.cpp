@@ -2,6 +2,7 @@
 
 #include "CxlDSM.h"
 #include "Debug.h"
+#include "Key.h"
 
 #include <fstream>
 #include <sstream>

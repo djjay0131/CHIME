@@ -1,0 +1,29 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    autoconf \
+    automake \
+    libtool \
+    libnuma-dev \
+    libtbb-dev \
+    libgoogle-glog-dev \
+    libboost-coroutine-dev \
+    libboost-context-dev \
+    libboost-system-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build cityhash from source (not in Ubuntu 20.04 repos)
+RUN git clone https://github.com/google/cityhash.git /tmp/cityhash \
+    && cd /tmp/cityhash \
+    && ./configure --build=$(gcc -dumpmachine) \
+    && make -j$(nproc) all CXXFLAGS="-g -O3" \
+    && make install \
+    && ldconfig \
+    && rm -rf /tmp/cityhash
+
+WORKDIR /src
