@@ -1,0 +1,228 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[numbers]{natbib}
+\usepackage{enumitem}
+\usepackage{multirow}
+
+\geometry{margin=1in}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  columns=fullflexible,
+}
+
+\definecolor{vtmaroon}{HTML}{861F41}
+\definecolor{vtorange}{HTML}{E5751F}
+\hypersetup{colorlinks=true,linkcolor=vtmaroon,citecolor=vtmaroon,urlcolor=vtorange}
+
+\title{Porting CHIME to CXL-Attached Memory\\[0.5em]\large Final Report --- Part Two}
+\author{Jason Cusati (\texttt{djjay@vt.edu})\\
+CS 6204 --- Advanced Topics in Systems\\
+Virginia Tech, Spring 2026}
+\date{May 5, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+%% TODO: 150-200 words. Cover:
+%%  - CHIME's RDMA assumption
+%%  - CXL as a point-to-point alternative
+%%  - Our port: CxlTransport backend, USE_CXL flag, NUMA emulation
+%%  - Headline finding (CXL vs RDMA latency/throughput on single-node)
+%%  - Main contribution: open-source, reproducible CXL port of CHIME
+CHIME (SOSP~'24) is a cache-efficient hybrid B+~tree/hopscotch index designed for RDMA-based disaggregated memory.
+We describe a port of CHIME that replaces its RDMA transport with a CXL-attached memory abstraction, implemented via NUMA-node emulation on a dual-socket host.
+We evaluate the CXL port against a single-node RDMA baseline on CloudLab r650 nodes using the YCSB workload suite and show that [RESULT~PLACEHOLDER].
+Our port is minimally invasive: a single compile-time flag (\texttt{USE\_CXL=ON}) swaps the transport layer without changes to CHIME's index algorithm or concurrency protocol.
+All code is available at \url{https://github.com/djjay0131/CHIME}.
+\end{abstract}
+
+%% ============================================================
+\section{Introduction}
+\label{sec:intro}
+%% ============================================================
+
+%% TODO: Motivation — why CXL for CHIME?
+%%  - CXL 2.0/3.0 promises lower latency, higher bandwidth, cache coherence
+%%  - Compare CXL (~200ns) to RDMA (~2us) load latency
+%%  - CHIME's design assumes high per-op cost → interesting question whether its
+%%    optimizations still pay off on CXL
+%%  - This report: port, measure, and discuss
+
+\subsection{Contributions}
+\begin{itemize}[nosep]
+    \item A minimally invasive port of CHIME to CXL-attached memory, using a compile-time transport switch.
+    \item An emulated evaluation framework that models CXL load/store semantics on commodity dual-socket hardware.
+    \item A head-to-head comparison of CHIME on RDMA vs.\ CXL for a subset of YCSB workloads.
+    \item An analysis of which of CHIME's techniques (hopscotch leaves, vacancy-aware locks, metadata replication, sibling-based validation, speculative read) remain load-bearing when latency per op drops by~10$\times$.
+\end{itemize}
+
+%% ============================================================
+\section{Background}
+\label{sec:background}
+%% ============================================================
+
+\subsection{CHIME in One Page}
+%% TODO: Brief recap from Part One — hybrid B+~tree / hopscotch leaves, six core
+%% techniques, 10~CN + 1~MN disaggregated memory architecture.
+
+\subsection{CXL Memory}
+%% TODO: CXL.mem protocol, load/store semantics vs one-sided RDMA verbs,
+%% ~200ns load latency vs ~2us RDMA READ. Why this matters for CHIME.
+
+\subsection{Emulating CXL on Commodity Hardware}
+%% TODO: CloudLab r650 has two NUMA nodes (one per socket). By pinning the
+%% "client" threads to node 0 and binding memory to node 1, we emulate
+%% cross-device load/store via QPI/UPI. Discuss the fidelity of this emulation
+%% (same memory semantics, different absolute latency than real CXL).
+
+%% ============================================================
+\section{Part One Recap: RDMA Baseline}
+\label{sec:part1-recap}
+%% ============================================================
+
+%% TODO: One-page summary of Part One results:
+%%  - What reproduced (fig_12 C/D/E, fig_15a, fig_15b)
+%%  - What did not (fig_12 A/B/LOAD — time/hardware constraints)
+%%  - Where the baseline numbers live (cite Part One report)
+For completeness, we briefly recap the RDMA reproduction results from the Part One progress report.
+%% Figure reference: figures/fig_12_rdma.pdf  (copy from Part One)
+
+%% ============================================================
+\section{Port Design}
+\label{sec:design}
+%% ============================================================
+
+\subsection{Architecture Overview}
+%% TODO: Diagram — current RDMA path vs new CXL path.
+%%  - User code → DSM → ThreadConnection → libibverbs → NIC → remote MN
+%%  - User code → CxlDSM → CxlTransport → NUMA-bound memory → load/store
+
+\subsection{The \texttt{CxlTransport} Abstraction}
+%% TODO: Describe CxlTransport interface. Methods: read_sync, write_sync,
+%% cas_sync, faa_boundary_sync, read_dm_sync, barrier, alloc, free.
+%% All synchronous (no coroutine polling). Map GlobalAddress to a pointer
+%% into the CXL-backed mmap region.
+
+\subsection{\texttt{CxlDSM}: Drop-in DSM Replacement}
+%% TODO: Explain CxlDSM inherits the public DSM API, so Tree.cpp is unchanged.
+%% Show the preprocessor alias ``#define DSM CxlDSM'' trick and why it works.
+
+\subsection{Build-System Surgery}
+%% TODO: Explain the 5 blocker fixes committed in 152b4e9:
+%%  1. Common.h gated Boost/RDMA includes behind #ifndef USE_CXL
+%%  2. addr_from_ror corrected to use ga.val = ror.dest (was corrupting batch addresses)
+%%  3. is_on_chip routing restored in batch operations
+%%  4. DSM.cpp / RDMA-only sources filtered out of CXL build via CMake
+%%  5. USE_CXL option() declaration moved before first reference
+%% Include relevant diff snippets.
+
+\subsection{Memory Allocation and Address Translation}
+%% TODO: Single-node means GlobalAddress.nodeID is always 0. The .offset field
+%% indexes into a contiguous mmap region. On-chip memory is emulated via a
+%% small fixed-size region at the start of the allocation space.
+
+\subsection{What We Did NOT Port}
+%% TODO:
+%%  - Multi-node support (single-node only; coordination via shared memory)
+%%  - Coroutines (all operations synchronous; no CQ polling)
+%%  - Memcached-based initialization (no cluster handshake needed)
+%%  - RPC-based directory operations (rpc stubs return 0)
+
+%% ============================================================
+\section{Evaluation}
+\label{sec:eval}
+%% ============================================================
+
+\subsection{Experimental Setup}
+%% TODO: Hardware: r650 @ Clemson — dual-socket Intel Xeon Gold 6338N,
+%% 256GB DDR4, two NUMA nodes. OS: Ubuntu 20.04. Build: GCC 9, CMake.
+%% Workloads: YCSB C/D/E (reproduce from Part One).
+%% Baselines:
+%%  1. Single-node CHIME on RDMA (loopback, same node as both CN and MN)
+%%  2. Single-node CHIME on CXL (NUMA node 0 threads, node 1 memory)
+%%  3. Single-node Sherman, SMART for reference (if time permits)
+
+\subsection{Throughput and Latency}
+%% TODO: Figure placeholder — mirror fig_12 from paper.
+%% Discuss how CXL's load/store semantics change the throughput-latency curve.
+
+\subsection{Which CHIME Techniques Still Matter?}
+%% TODO: With ~10x lower per-op latency, do hopscotch leaves still beat B+~tree
+%% leaves? Does vacancy-aware locking still help when contention window shrinks?
+%% Disable each technique in turn (mirror fig_15a) and measure the delta.
+
+\subsection{Cache Consumption on CXL}
+%% TODO: On CXL, the index cache optimization may be less important since
+%% "remote" access is cheap. Measure and discuss.
+
+%% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+%% ============================================================
+
+\subsection{Does CHIME Still Make Sense on CXL?}
+%% TODO: The paper's core claim is cache efficiency via hopscotch leaves.
+%% On CXL where loads are fast, does this trade-off still favor hopscotch?
+%% Speculate, then let data decide.
+
+\subsection{Limitations of NUMA Emulation}
+%% TODO:
+%%  - Latency is QPI/UPI (~80ns), real CXL is closer to 200-300ns
+%%  - Bandwidth symmetric; real CXL devices often bandwidth-limited
+%%  - No real CXL.mem protocol overhead (credit flow control, etc.)
+
+\subsection{Path to a Real CXL Deployment}
+%% TODO: What would change if run on real CXL hardware (e.g., a CXL memory
+%% expander attached via PCIe 5.0)? DMA APIs, persistence model, failure domain.
+
+%% ============================================================
+\section{Related Work}
+\label{sec:related}
+%% ============================================================
+
+%% TODO: CXL-native index structures, disaggregated memory surveys,
+%% other CXL port efforts (e.g., Pond, TPP).
+
+%% ============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%% ============================================================
+
+%% TODO: Summary paragraph + 1 sentence on open artifact.
+
+%% ============================================================
+\bibliographystyle{plainnat}
+\bibliography{references}
+%% ============================================================
+
+\appendix
+
+\section{Reproducibility}
+\label{app:repro}
+
+%% TODO:
+%%  - Repo: github.com/djjay0131/CHIME, branch: main, commit: [SHA]
+%%  - Build: cmake -DUSE_CXL=ON .. && make -j
+%%  - Run: exp/fig_12_cxl.py
+%%  - Hardware: any dual-socket x86_64 with NUMA support
+%%  - Results reproduced on: CloudLab r650 @ Clemson
+
+\end{document}
