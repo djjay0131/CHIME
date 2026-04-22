@@ -1,0 +1,40 @@
+# YCSB 0.17.0 workload generator for fig_14 surrogate and full fig_14.
+# Produces 60M and (optionally) 40M/80M/100M/120M key workloads.
+#
+# Build:  docker build -f Dockerfile.ycsb-gen -t chime-ycsb-gen .
+# Run:    docker run --rm -v "$PWD/ycsb/workloads":/ycsb/workloads \
+#           chime-ycsb-gen workload60M
+#
+# Output lands in ./ycsb/workloads/ on the host.
+
+FROM eclipse-temurin:8-jdk
+
+# YCSB 0.17.0's bin/ycsb script is Python 2 syntax (multi-type except clause).
+# Ubuntu 22.04-based temurin image does not ship python2. For 60M+ workload
+# generation we either need to (a) install python2 from universe, (b) patch
+# YCSB's bin/ycsb script, or (c) bump to a YCSB release with Python 3 support.
+# Deferred: generating 60M+ workloads is AC-13 stretch; if needed, patch
+# bin/ycsb or switch to ycsb-jdbc-binding-0.17.0 which uses Py3. For now this
+# image builds but workload gen fails at runtime — documented as known.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    maven python3 2to3 wget && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3 /usr/local/bin/python
+
+WORKDIR /ycsb
+
+# YCSB 0.17.0 binary release (includes pre-built basic binding)
+RUN wget -qO- https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-0.17.0.tar.gz \
+    | tar xz && mv ycsb-0.17.0 YCSB && rm -rf YCSB/lib/geode* \
+    && 2to3 -w -n YCSB/bin/ycsb 2>/dev/null || true \
+    && ls YCSB/bin/
+
+# Copy spec files from repo at runtime via volume mount, OR bake them in:
+COPY ycsb/full_workload_spec /ycsb/full_workload_spec
+COPY ycsb/gen_workload.py /ycsb/gen_workload.py
+
+RUN mkdir -p /ycsb/workloads
+
+# Usage: docker run ... chime-ycsb-gen workload60M [randint|email]
+ENTRYPOINT ["python3", "gen_workload.py"]
+CMD ["workload60M", "randint", "full"]

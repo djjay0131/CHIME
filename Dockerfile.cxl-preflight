@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     libboost-coroutine-dev \
     libboost-context-dev \
     libboost-system-dev \
+    libibverbs-dev \
+    libmemcached-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build cityhash from source (not in Ubuntu 20.04 repos)
