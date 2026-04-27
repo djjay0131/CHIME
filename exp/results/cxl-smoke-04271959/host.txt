@@ -1,0 +1,2 @@
+node0.chime-04271959.cs620426sp-pg0.clemson.cloudlab.us
+Linux node0.chime-04271959.cs620426sp-pg0.clemson.cloudlab.us 5.4.0-212-generic #232-Ubuntu SMP Sat Mar 15 15:34:35 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux

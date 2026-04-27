@@ -523,10 +523,68 @@ Three concrete improvements to CloudLab's APIs would have prevented this six-day
 
 These are not editorial complaints. They are testable engineering changes, each individually sufficient to have surfaced the root cause inside the first failed window.
 
-\subsection{Late Data (if applicable)}
+\subsection{Late Data: Smoke Gate Result (April 27)}
 \label{sec:late-data}
-%% AC-22: placeholder; remains as the "no additional data" line if nothing arrives.
-No additional CXL or single-node RDMA data became available before the May 5 deadline. The preceding postmortem is therefore the complete record of what was attempted, what failed, and what would be required to satisfy the deferred acceptance criteria (AC-1, AC-2, AC-3, AC-5, AC-12, AC-13 in the project specification).
+
+After the postmortem timeline above closed, an additional reservation (UUID \texttt{2afbcb47-b233-4d21-b350-d6af029d9074}, April 27, 1$\times$ 8h, 2 nodes r650 Clemson) was honored by the scheduler. We were able to provision both r650 nodes and run the smoke gate. The result is a CXL runtime finding: the build succeeds on real hardware, the binary launches, and the LOAD phase begins, but a deterministic segmentation fault occurs in the index-traversal path before the gate completes.
+
+\paragraph{Build (matches AC-7).} \texttt{cmake -DUSE\_CXL=ON .. \&\& make -j} on r650 produced \texttt{ycsb\_test} (272\,KB binary) without modification. The same five-blocker fix sequence that closed the Docker preflight (\S\ref{sec:effort-cxl}) carries over: no further build-system surgery was required on real hardware. This is a stronger reproducibility statement than the Docker-only AC-7 alone.
+
+\paragraph{Runtime (smoke-gate FAIL).} \texttt{./ycsb\_test 1 8 1 randint c} reaches the LOAD phase, runs for approximately 17 seconds, then segfaults. The same crash reproduces with thread count reduced to 1 (\texttt{1 1 1}). \texttt{gdb} on the core dump (artifacts at \texttt{exp/results/cxl-smoke-04271959/}) yields the following stack trace on the faulting thread:
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Program terminated with signal SIGSEGV.
+#0  0x00007f22a0ab2a80 in ?? ()
+#1  Tree::internal_node_search(GlobalAddress&, GlobalAddress&,
+                               Key const&, uint16_t&, bool, CoroPull*)
+#2  Tree::insert_internal(Key const&, GlobalAddress const&,
+                          RootEntry const&, uint8_t, CoroPull*)
+#3  Tree::hopscotch_split_and_unlock(LeafNode*, Key const&,
+                                     uint64_t, GlobalAddress const&,
+                                     uint64_t*, CoroPull*)
+#4  Tree::leaf_node_insert(GlobalAddress const&, GlobalAddress const&,
+                            Key const&, uint64_t, bool, CoroPull*)
+#5  Tree::insert(Key const&, uint64_t, CoroPull*)
+\end{lstlisting}
+
+The faulting program counter is in an unmapped region, consistent with either (a) a corrupted function pointer being dereferenced after a leaf split widens the parent fence keys, or (b) a stale cached internal-node pointer being followed from before the CXL pool was bound to NUMA node 1. The crash sits in the same code region that we identified statically as the source of Sherman's LOAD assertion (\S\ref{sec:stress}) --- the parent-pointer chase after a hopscotch split --- which suggests the CXL transport's address translation interacts badly with the cached-internal-node optimization on the insert path. We did not attempt a live fix on the cluster (per project memory, debugging on the reservation clock is forbidden); the stack trace and a minimal reproduction recipe are committed at \texttt{exp/results/cxl-smoke-04271959/} for offline triage.
+
+\paragraph{Operational findings from the same window.} Two additional environmental issues surfaced and are recorded for future reproduction:
+
+\begin{itemize}[nosep]
+    \item \textbf{Root partition is 16\,GB on r650 Clemson} (separate from \texttt{/proj} NFS, which has 100\,GB). This is small enough that an apt cache plus a CHIME source clone consumes it, blocking subsequent package installs. We resolved this by relocating the build directory to \texttt{/proj/cs620426sp-PG0/djjay-build/}, leaving root at 21\% used. Future reservations should symlink \texttt{build-cxl/} to NFS at setup time.
+    \item \textbf{Hugepages must be allocated to NUMA node 1, not split across both nodes.} The default Linux behavior of \texttt{echo N > /proc/sys/vm/nr\_hugepages} splits hugepages evenly across NUMA nodes. \texttt{CxlTransport} requests hugepage backing on node 1 specifically; the half on node 0 is unusable and the \texttt{memset} in the constructor produces a bus error before any output is written. Explicitly allocating to node 1 (\texttt{echo 36000 > /sys/devices/system/node/node1/hugepages/hugepages-2048kB/nr\_hugepages}) eliminates the bus error and lets the binary reach the LOAD phase.
+\end{itemize}
+
+\paragraph{Hypothesis-narrowing iterations.} Within the same window we ran two follow-up experiments to narrow the crash hypothesis:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Cache disabled.} Re-built with \texttt{-DENABLE\_CACHE=OFF} (removes the internal-node cache that we initially suspected). Same crash, same stack trace --- so the bug is \emph{not} in the cached-internal-node optimization.
+    \item \textbf{Hugepages disabled.} Patched \texttt{src/CxlDSM.cpp} to pass \texttt{use\_hugepages=false} to \texttt{CxlTransport}, forcing the 64\,GB pool to back with regular 4\,KB anonymous pages. The binary now spends $\sim$15\,s in uninterruptible-sleep zero-filling the pool (16\,M page faults at memory bandwidth), then segfaults at the same downstream site. So the bug is \emph{not} the hugepage allocation path either.
+\end{enumerate}
+
+Both iterations crashed in the same code region with no stdout produced (\texttt{printf} is line-buffered; the crash precedes any flush). The combined evidence places the bug after \texttt{CxlTransport} initialization succeeds (mmap, mbind, lock region all complete) and during either the \texttt{CxlDSM} per-thread buffer setup (lines 47--52 of \texttt{CxlDSM.cpp}, allocating $\sim$4\,GB of \texttt{new char[\ldots]} across 65 thread slots) or the first \texttt{Tree} operation on the freshly-bound pool. We did not have time to bisect further on this reservation.
+
+\paragraph{Scope of this finding.} A successful smoke gate would have unlocked AC-1 through AC-5; this run got past AC-7 (build) but did not pass AC-1 (smoke). What the deferred work now looks like has changed:
+
+\begin{itemize}[nosep]
+    \item Before this reservation: ``CXL has never run on real hardware.''
+    \item After this reservation: ``CXL builds clean on real r650, allocates the pool, binds NUMA correctly. Crash occurs after pool allocation, before any \texttt{Tree} method completes. Two negative results rule out the internal-node cache and the hugepage path. Likely culprits are CXL-mode-specific paths that the Docker preflight does not exercise: the per-thread buffer initialization in \texttt{CxlDSM.cpp:47--52}, or the first synchronous transport operation triggered by \texttt{Tree}'s constructor.''
+\end{itemize}
+
+A focused fix-and-rerun cycle on a future reservation has a much smaller search space than starting from the previous status of ``no runtime data.''
+
+\paragraph{RDMA fallback was also attempted (and also blocked at runtime).} Per the project specification's reservation-denial fallback, when the CXL smoke gate fails the runbook directs us to pivot to a single-node RDMA run to collect missing fig\_12 A/B from Part One. We attempted this in the same window. MLNX OFED userspace was successfully installed on both r650 nodes (\texttt{mlnxofedinstall --user-space-only --without-fw-update}), the GID-3 VLAN-bound RoCEv2 interface was confirmed via \texttt{/sys/class/infiniband/mlx5\_2/ports/1/gid\_attrs}, the six RoCE source-level fixes from §\ref{sec:effort-roce} were re-applied, the binary built clean, and \texttt{memcached} was launched on the master node listening on \texttt{10.10.1.1:11211} (the internal-LAN VLAN address). Initial cross-node connectivity over the RoCEv2 path was successful (memcached reachable from the second node). However, when both nodes launched the RDMA \texttt{ycsb\_test} simultaneously to start the 1\,CN + 1\,MN run, the CN-side binary segfaulted immediately on startup with no stdout produced, in a pattern identical to the CXL crash. We do not have a clean explanation; possible causes are (i) interaction between MLNX OFED 4.9 userspace and our recent CXL-port commits to \texttt{include/Rdma.h} and \texttt{src/rdma/Resource.cpp}, (ii) a NUMA/hugepage state difference between this April~27 reservation and the April~5--7 reservations that produced our Part One data, or (iii) an environment artifact of the userspace-only OFED install (which skips kernel-module updates). Disk pressure on the 16\,GB root partition forced the install/build/run cycle through several relocations to \texttt{/proj/cs620426sp-PG0/} NFS, which is itself a finding.
+
+\paragraph{What this reservation produced, in summary.} The April~27 window converted the prior status (``CXL has never run on real hardware; no fig\_12 reproduction data beyond Part One'') into:
+
+\begin{itemize}[nosep]
+    \item AC-7 strengthened: the CXL build is reproducible from clone on real r650, not just in Docker.
+    \item Two operational artifacts (16\,GB root partition discipline; NUMA-1 hugepage allocation discipline) that should land in any future runbook.
+    \item A narrowed CXL crash hypothesis (post-allocation, pre-first-Tree-op; not the cache; not the hugepage path).
+    \item A confirmed working RoCEv2 + VLAN-GID-3 setup on this hardware variant (ConnectX-6 Dx, distinct from the ConnectX-6 we had on Run~7--8) --- the configuration recipe is correct but a separate runtime crash in the RDMA path prevented data collection.
+    \item Runtime evidence that the recent CXL-port commits may have introduced a regression in the RDMA path that the Docker preflight cannot catch (since Docker preflight is CXL-only by design --- AC-7 footnote). This is exactly the kind of regression that AC-12 (RDMA per-thread regression check) was specified to catch; AC-12 is therefore now \emph{more} important for the next reservation, not less.
+\end{itemize}
 
 %% ============================================================
 \section{Conclusion and Future Work}

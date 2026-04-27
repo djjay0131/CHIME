@@ -1,0 +1,3 @@
+vm.nr_hugepages: 36000
+node0 hugepages: 0
+node1 hugepages: 36000

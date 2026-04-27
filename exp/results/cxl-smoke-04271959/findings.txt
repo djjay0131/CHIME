@@ -1,0 +1,13 @@
+with hugepages: segfault at ~17s, PC in libc range, in Tree::internal_node_search after hopscotch_split_and_unlock
+without hugepages (use_hugepages=false): segfault at ~15s, after 64GB zero-fill completes
+minimal repro: ./ycsb_test 1 1 1 randint c (1 thread, 1 coro) — same crash
+implication: CXL pool initialization succeeds; crash is downstream in either DSM internal init or first Tree operation
+
+=== RDMA fallback attempt (Apr 27) ===
+OFED 4.9-5.1.0 userspace install: SUCCESS on both nodes
+GID 3 confirmed on mlx5_2 = RoCEv2+VLAN+10.10.1.x
+RoCE source fixes (MLX_GID=3, IBV_MTU_1024, hop_limit=64) applied
+Build: SUCCESS (ycsb_test 365896 bytes)
+memcached on 10.10.1.1:11211 reachable from node1
+Runtime: ycsb_test CN-side segfault on startup, no stdout produced
+Hypothesis: recent CXL-port commits may have introduced RDMA-path regression
