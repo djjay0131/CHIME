@@ -1,11 +1,23 @@
 ---
 title: "Presentation"
-subtitle: "15–20 min Beamer, April 7–9, 2026 (Week 12)"
+subtitle: "Final Project Presentation, May 5, 2026"
 ---
 
-Beamer presentation for CS 6204 Week 12. Built with the Metropolis theme (16:9).
+## Final Presentation (May 5)
 
-{{< pdf "/pdfs/presentation.pdf" >}}
+**Download:** <a href="/CHIME/pdfs/final-presentation.pdf">final-presentation.pdf</a>
+
+{{< pdf "/pdfs/final-presentation.pdf" >}}
+
+The final-project presentation covers the same arc as the report: reproduction trends matched, Sherman LOAD stress finding, CXL port engineering completed, four-window CloudLab reservation outage with verbatim error, and three concrete API improvements that would have unblocked the evaluation.
+
+---
+
+## Progress Presentation (April 9, history)
+
+The earlier Week-12 progress presentation, preserved for history.
+
+**Download:** <a href="/CHIME/pdfs/presentation.pdf">presentation.pdf</a>
 
 ---
 

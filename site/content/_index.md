@@ -33,12 +33,14 @@ We reproduce four figures from the paper on CloudLab r650 hardware with 100 Gbps
 |-------|-------|--------|
 | Mar 8 | CloudLab reservations submitted | <span class="badge badge-green">Done</span> |
 | Mar 9--16 | Pre-work: scripts, build pipeline, profiles | <span class="badge badge-green">Done</span> |
-| Mar 23--26 | Pre-deadline run: 11x r6525 Clemson (9 CN + 1 MN) | <span class="badge badge-green">Done</span> |
-| Mar 27--Apr 3 | Full run: 10x r650 Clemson (9 CN + 1 MN) | <span class="badge badge-orange">Active</span> |
-| Apr 3--6 | Re-run: 11x r650 Clemson (10 CN + 1 MN) | <span class="badge badge-maroon">Approved</span> |
-| Apr 7--9 | Progress presentation (Week 12, 15--20 min) | <span class="badge badge-gray">Upcoming</span> |
-| Late Apr | Part Two: CXL port | <span class="badge badge-gray">Upcoming</span> |
-| May 5 | Final report due | <span class="badge badge-gray">Upcoming</span> |
+| Mar 23--26 | Pre-deadline dry run: 11x r6525 Clemson (9 CN + 1 MN) | <span class="badge badge-green">Done</span> |
+| Apr 5--6 | r650 Clemson Run 7 (5 CN + 1 MN, 16h) | <span class="badge badge-green">Done</span> |
+| Apr 6--7 | r650 Clemson Run 8 (3 CN + 1 MN, 20h) | <span class="badge badge-green">Done</span> |
+| Apr 7--9 | Progress presentation (Week 12) | <span class="badge badge-green">Done</span> |
+| Apr 21--27 | Part Two: CXL port engineering, off-hardware tooling | <span class="badge badge-green">Done</span> |
+| Apr 22--26 | Part Two: CXL hardware evaluation | <span class="badge badge-maroon">Blocked (CloudLab)</span> |
+| May 5 | Final presentation | <span class="badge badge-orange">Imminent</span> |
+| May 6 | Final combined report due | <span class="badge badge-orange">Imminent</span> |
 
 ## Deliverables
 
@@ -48,12 +50,12 @@ We reproduce four figures from the paper on CloudLab r650 hardware with 100 Gbps
     <p>Hardware, methods, workloads, timeline, and challenges</p>
   </a>
   <a href="/CHIME/paper/" class="link-card">
-    <h3>Research Report</h3>
-    <p>Section-by-section breakdown and reproduced results</p>
+    <h3>Final Report</h3>
+    <p>Combined Part One + Part Two with reproduction results, Sherman stress finding, and CloudLab postmortem</p>
   </a>
   <a href="/CHIME/presentation/" class="link-card">
-    <h3>Presentation</h3>
-    <p>Beamer slides for the April 7--9 progress presentation</p>
+    <h3>Final Presentation</h3>
+    <p>May 5 final-project Beamer slides covering reproduction, CXL port, and infrastructure findings</p>
   </a>
   <a href="https://github.com/djjay0131/CHIME" class="link-card">
     <h3>GitHub Repository</h3>

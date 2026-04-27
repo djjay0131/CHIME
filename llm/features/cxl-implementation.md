@@ -1,7 +1,7 @@
 # Feature: CXL Transport Backend for CHIME and Competitor Indexes
 
-**Status:** SPECIFIED
-**Date:** 2026-03-26
+**Status:** IMPLEMENTED (Phase 1 — local code; Phase 2 Tree integration requires cluster)
+**Date:** 2026-03-30 (updated from 2026-03-26)
 **Author:** Feature Architect (AI-assisted)
 
 ## Problem
@@ -14,8 +14,9 @@ The port must use a clean abstraction layer (not a fork), emulate CXL via NUMA o
 
 - Transport abstraction layer that supports both RDMA and CXL backends from a single codebase
 - All 5 methods (CHIME, Sherman, SMART, ROLEX, Marlin) working on both RDMA and CXL
-- RDMA-vs-CXL comparative throughput-latency figures using identical workloads
+- Three-way comparative figures: multi-node RDMA (existing Part One data) + single-node RDMA (2 CN + 1 MN) + single-node CXL (1 node NUMA emulation)
 - Analytical explanation of performance differences (latency, cache coherence, coroutine overhead)
+- Minimum 3 r650 nodes required (not 10-11) — designed for constrained CloudLab availability
 - CXL emulated via remote NUMA node on r650 (2x Xeon, 2 NUMA domains)
 - Coroutines stripped in CXL backend for realistic synchronous load/store performance
 
@@ -119,6 +120,56 @@ On r650 (2x Xeon):
 - NUMA node 1: "CXL memory" (mmap'd with `mbind(MPOL_BIND)` to node 1)
 - `numactl --membind=1` for the memory pool allocation
 - Optional: inject artificial latency via kernel `hmat` tables or `e820` reservation to model CXL's ~100-200ns additional latency over local DRAM
+
+### Minimum Node Requirements
+
+CloudLab node availability is unreliable — the TA controls reservations and actual availability varies. All experiments are designed to run with minimum resources.
+
+| Experiment | CXL Nodes | RDMA Nodes | Total r650 | Notes |
+|-----------|-----------|-----------|-----------|-------|
+| CXL throughput-latency (fig_12 equivalent) | 1 | — | 1 | Single-node NUMA emulation |
+| CXL cache consumption (fig_14 equivalent) | 1 | — | 1 | Per-node metric |
+| CXL ablation (fig_15a/15b equivalent) | 1 | — | 1 | Relative comparison valid at any scale |
+| Single-node RDMA baseline | — | 3 (2 CN + 1 MN) | 3 | Controlled transport comparison at same scale as CXL; exercises cross-CN coordination |
+| Multi-node RDMA (best effort) | — | All available | All available | Use max nodes the TA provides — closer to paper's 10 CN |
+| **Minimum full session** | 1 | 3 (2 CN + 1 MN) | **3** | CXL on node0 NUMA, RDMA across all 3 nodes |
+
+**Why 3 nodes minimum for RDMA (not 2):** With only 1 CN, features like READ_DELEGATION and WRITE_COMBINING are meaningless (no cross-CN coordination). 2 CN is the minimum that exercises all CHIME features including lock contention, cache invalidation across CNs, and concurrent splits.
+
+**Why 1 node for CXL:** CXL emulation is intra-node (NUMA node 0 = compute, NUMA node 1 = memory). No network needed.
+
+### Three-Way Comparison Strategy
+
+The report presents three data series per figure for maximum analytical value:
+
+1. **Multi-node RDMA** (all available nodes, re-run on r650): Use max CN count available. Shows RDMA at scale.
+2. **Single-node RDMA** (2 CN + 1 MN, fresh runs on r650): RDMA at same small scale as CXL. Isolates transport overhead from scale effects.
+3. **CXL** (1 node, NUMA emulation on r650): The new transport backend.
+
+All three series on **r650 hardware** — no cross-architecture comparison.
+
+This enables two key comparisons:
+- **CXL vs single-node RDMA**: Pure transport comparison (same node count, same workload). Answers "how much does CXL improve over RDMA for the same hardware?"
+- **CXL vs multi-node RDMA**: Practical positioning. Answers "can single-node CXL match or exceed multi-node RDMA?"
+
+### Experiment Configuration Management
+
+Separate param files per run configuration to avoid state corruption:
+- `fig_12_cxl.json` — CXL parameters (1 node, no CN count)
+- `fig_12_rdma_2cn.json` — Single-node RDMA baseline (2 CN + 1 MN)
+- `fig_12_rdma_full.json` — Multi-node RDMA (CN count = available nodes - 1)
+- Same pattern for fig_14, fig_15a, fig_15b
+
+Clean state between CXL and RDMA runs: hugepage reset + process cleanup. Reprovision nodes if needed.
+
+### Implementation Priority
+
+Aim for all 5 methods, accept partial delivery if timeline is tight:
+1. **CHIME** (must — primary subject)
+2. **Sherman** (same repo, different CMake flags — low incremental effort)
+3. **SMART** (separate repo, similar harness)
+4. **ROLEX** (separate repo)
+5. **Marlin** (stretch — variable-length KV, different code paths)
 
 ## Sample Implementation
 
@@ -259,19 +310,19 @@ public:
 - **Then** all operations (insert, read, update, scan) return correct results; no assertion failures or segfaults
 
 ### AC-3: RDMA Backend Preserves Existing Performance
-- **Given** RdmaTransport wrapping existing DSM
-- **When** running the same YCSB workloads as Part One
-- **Then** throughput and latency within 5% of pre-refactoring measurements (no regression)
+- **Given** RdmaTransport wrapping existing DSM on 3 nodes (2 CN + 1 MN)
+- **When** running YCSB C with the same thread count before and after refactoring
+- **Then** throughput and latency within 5% of pre-refactoring measurements at the same scale (no regression from the abstraction layer)
 
 ### AC-4: CXL Latency Lower Than RDMA
 - **Given** both backends running the same workload on r650
 - **When** comparing median read latency
 - **Then** CXL median latency < RDMA median latency (expected ~3-5x improvement based on NUMA vs InfiniBand)
 
-### AC-5: Comparative Figures Generated
-- **Given** completed runs on both transports for all 5 methods
+### AC-5: Three-Way Comparative Figures Generated
+- **Given** completed CXL runs (1 node), single-node RDMA runs (3 nodes), and existing multi-node RDMA data
 - **When** experiment scripts produce output
-- **Then** at minimum: throughput-latency curves (like Fig 12) for RDMA vs CXL, cache comparison (like Fig 14), and a latency breakdown figure
+- **Then** at minimum: throughput-latency curves showing all three data series, cache comparison (CXL vs RDMA), and a latency breakdown figure analyzing the transport overhead difference
 
 ### AC-6: All 5 Methods Work on CXL Under Stress
 - **Given** the transport abstraction applied to CHIME, Sherman, SMART, ROLEX, and Marlin repos
@@ -293,16 +344,25 @@ public:
 
 ## Dependencies
 
-- CloudLab r650 reservation with dual-socket access (approved: Mar 27-Apr 3 and Apr 3-6)
-- Part One RDMA results as baseline for comparison (due today, Mar 26)
+- **Minimum 3x r650 CloudLab nodes** (TA controls reservations; design for what's available, not what's reserved)
+  - 1 node for CXL NUMA emulation
+  - 3 nodes (2 CN + 1 MN) for single-node RDMA baseline
+  - Can share nodes: run CXL on node0's NUMA, then RDMA across node0-node2
+- Part One multi-node RDMA results as third comparison series (already collected on r6525 and r650)
 - `numactl` and `libnuma` on r650 nodes (standard on Ubuntu)
 - Sibling repos (SMART, ROLEX, Marlin) forked and accessible
+- Internal LAN profile required for RDMA runs (see `cloudlab/profile-r650-lan.py` — RDMA on control net causes quarantine)
 
 ## Open Questions
 
 - **Artificial latency injection**: Should we add ~100-200ns artificial latency to NUMA accesses to better model real CXL? (e.g., via `hmat` kernel tables or busy-wait padding in `resolve()`). This affects result realism but adds complexity.
 - **Thread count normalization**: RDMA uses coroutines (e.g., 8 coros per thread x 24 threads = 192 effective workers). CXL uses plain threads. Should CXL use 192 threads for fair comparison, or match the 24 physical threads?
-- **Memory node role**: In RDMA, the memory node runs a server process. In CXL, there's no server — just shared memory. How to handle the 11th node? (Likely: don't use it, run 10 CN with local NUMA-emulated CXL)
 - **Scan operations**: CHIME's range scan uses `FINE_GRAINED_RANGE_QUERY` with multiple RDMA reads. On CXL, this becomes sequential pointer chasing with hardware prefetch. Worth investigating prefetch hints (`__builtin_prefetch`) for CXL scan performance?
 - **Transport interface universality**: Do all 5 methods' DSM usage patterns decompose cleanly into the common `Transport` template interface? Sherman's `write_faa` composite, CHIME's `cas_read`, and SMART's read delegation may need method-specific extensions or escape hatches. Must audit each repo's DSM call sites during implementation.
 - **Masked CAS strategy selection**: Three options identified (read-modify-CAS loop, separate cache-line per lock, per-lock byte atomics). Need to prototype and benchmark under contention to select. Tail latency impact to be documented in report.
+
+## Resolved Questions (from update)
+
+- **Memory node role** (resolved): CXL has no memory node — just shared NUMA memory on a single machine. RDMA comparison uses 3 nodes (2 CN + 1 MN). No need for 10-11 nodes.
+- **CloudLab node availability** (resolved): TA controls reservations; actual availability is unpredictable. All experiments designed for minimum 3 nodes. Use whatever is available — more nodes improve RDMA scalability data but aren't required for the CXL comparison.
+- **r650 RoCE configuration** (resolved): r650 at Clemson requires internal LAN profile with VLAN. Six RDMA config changes needed (see `memory/project_roce_fixes.md`). RDMA on control network causes account quarantine.

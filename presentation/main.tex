@@ -1,13 +1,24 @@
 \documentclass[aspectratio=169]{beamer}
 
-\usetheme{metropolis}
+% VT presentation template (Madrid + miniframes + circles)
+\usetheme{Madrid}
+\useoutertheme{miniframes}
+\useinnertheme{circles}
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{palatino}
+\usepackage[default]{opensans}
+\usefonttheme{default}
+
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{tikz}
 \usepackage{colortbl}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{xcolor}
 
 \usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc}
 
@@ -17,18 +28,53 @@
   \setbeameroption{show notes on second screen=right}
 \fi
 
-% Color definitions matching metropolis
-\definecolor{mTeal}{HTML}{2B7A78}
-\definecolor{mBrown}{HTML}{C9956B}
-\definecolor{mRed}{HTML}{CC4444}
-\definecolor{mGreen}{HTML}{4A9A4A}
-\definecolor{mGray}{HTML}{888888}
+% Virginia Tech official colors (VT template)
+\definecolor{myRed}{RGB}{134,31,65}       % VT Maroon
+\definecolor{myOrange}{RGB}{229,117,31}   % VT Orange
+% Legacy aliases kept so existing TikZ frames keep working
+\colorlet{vtMaroon}{myRed}
+\colorlet{vtOrange}{myOrange}
+\colorlet{vtWhite}{white}
+\colorlet{mTeal}{myRed}
+\colorlet{mBrown}{myOrange}
+\definecolor{mRed}{HTML}{CC4444}     % error/warning
+\definecolor{mGreen}{HTML}{4A9A4A}   % success/done
+\definecolor{mGray}{HTML}{888888}    % neutral
 
-\title{Reproducing CHIME}
-\subtitle{A Cache-Efficient and High-Performance Hybrid Index\\on Disaggregated Memory}
-\author{Jason Cusati (\texttt{djjay@vt.edu})}
-\institute{CS 6204 --- Advanced Topics in Systems\\Virginia Tech}
-\date{April 7--9, 2026}
+% VT template color assignments
+\setbeamercolor{frametitle}{bg=myRed!85, fg=white}
+\setbeamercolor{title}{fg=myRed}
+\setbeamercolor{author}{fg=myRed}
+\setbeamercolor{institute}{fg=myRed}
+\setbeamercolor{date}{fg=myRed}
+\setbeamercolor{structure}{fg=myRed}
+\setbeamercolor{itemize item}{fg=myOrange}
+\setbeamercolor{itemize subitem}{fg=myOrange}
+\setbeamercolor{enumerate item}{fg=myOrange}
+\setbeamercolor{section in head/foot}{bg=myRed, fg=white}
+\setbeamercolor{subsection in head/foot}{bg=myRed!80, fg=white}
+\setbeamercolor{section in toc}{fg=myRed}
+\setbeamercolor{alerted text}{fg=myOrange}
+\setbeamercolor{block title}{bg=myOrange!80, fg=white}
+\setbeamercolor{block body}{bg=myOrange!10}
+
+% VT monogram command (TikZ vector logo; used in institute line and footer logo)
+\newcommand{\vtlogo}[1][0.8cm]{%
+  \begin{tikzpicture}[baseline=(V.base)]
+    \node[font=\bfseries\fontsize{16}{16}\selectfont, text=myRed, inner sep=0pt] (V) {V};
+    \node[font=\bfseries\fontsize{16}{16}\selectfont, text=myOrange, inner sep=0pt, anchor=west] at ([xshift=-1pt]V.east) {T};
+  \end{tikzpicture}%
+}
+
+\title{Reproducing CHIME and Attempting a CXL Port}
+\subtitle{Engineering, Evaluation, and Infrastructure Lessons\\
+\small CS 6204 Final Project --- Spring 2026}
+\author{Jason Cusati}
+\institute[VT CS]{CS 6204 --- Advanced Topics in Systems\\Virginia Tech \\ \smallskip \textit{djjay@vt.edu}}
+\date{May 5, 2026}
+
+% VT logo bottom-right on every slide
+\logo{\vtlogo}
 
 \begin{document}
 
@@ -110,8 +156,14 @@
 \end{frame}
 
 % Slide 5 — The Claim
-\begin{frame}[standout]
-  2.0--5.6\texttimes{} throughput
+{
+\setbeamercolor{background canvas}{bg=myRed}
+\begin{frame}[plain]
+\vspace*{\fill}
+\begin{center}
+{\color{white}\Huge\bfseries 2.0--5.6\texttimes{} throughput}
+\end{center}
+\vspace*{\fill}
 \note{
   \textbf{Key point:} CHIME's headline result.\\
   \textbf{Say:} The paper claims CHIME achieves 2.0 to 5.6 times higher
@@ -121,6 +173,7 @@
   \textbf{Time:} 30s
 }
 \end{frame}
+}
 
 % ============================================================
 % SECTION 2: Our Experiment (4 slides, ~3 min)
@@ -133,10 +186,11 @@
 \centering
 \includegraphics[height=0.82\textheight]{diagrams/cluster-topology.pdf}
 \note{
-  \textbf{Key point:} Our cluster matches the paper's setup.\\
-  \textbf{Say:} We used CloudLab's r650 nodes at Clemson. 10 compute
-  nodes and 1 memory node, each with dual 36-core Xeons and a 100 Gbps
-  Mellanox NIC. This matches the paper's setup exactly.\\
+  \textbf{Key point:} Same hardware type as the paper, fewer nodes.\\
+  \textbf{Say:} We used CloudLab's r650 nodes at Clemson---same hardware
+  as the paper. Dual 36-core Xeons, 100 Gbps Mellanox ConnectX-6 NIC. We
+  had 5 compute nodes plus 1 memory node---half the paper's 10 CN. Absolute
+  throughput is lower but relative comparisons are valid.\\
   \textbf{Transition:} Here are the five methods we compared.\\
   \textbf{Time:} 40s
 }
@@ -219,31 +273,32 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
   \draw[->, thick, mGray] (-6.5,0) -- (6.5,0);
 
   % Milestones
-  \node[milestone, fill=mGray!15, draw=mGray] at (-4.5,0.8) {
-    Mar 23--26\\r6525 (pre-deadline)
+  \node[milestone, fill=mGray!15, draw=mGray] at (-5.2,0.8) {
+    Mar 23--26\\r6525 (9\,CN)
   };
-  \draw[mGray] (-4.5,0.4) -- (-4.5,0.1);
+  \draw[mGray] (-5.2,0.4) -- (-5.2,0.1);
 
-  \node[milestone, fill=mTeal!12, draw=mTeal] at (-0.5,0.8) {
-    Mar 27--Apr 3\\r650 (full run)
+  \node[milestone, fill=mTeal!12, draw=mTeal] at (-2,0.8) {
+    Mar 27--Apr 3\\r650 debug (runs 1--4)
   };
-  \draw[mTeal] (-0.5,0.4) -- (-0.5,0.1);
+  \draw[mTeal] (-2,0.4) -- (-2,0.1);
 
-  \node[milestone, fill=mTeal!12, draw=mTeal] at (3.2,0.8) {
-    Apr 3--6\\r650 (10\,CN)
+  \node[milestone, fill=mGreen!15, draw=mGreen] at (1.6,0.8) {
+    Apr 5--7\\r650 data (5\,CN)
   };
-  \draw[mTeal] (3.2,0.4) -- (3.2,0.1);
+  \draw[mGreen] (1.6,0.4) -- (1.6,0.1);
 
-  \node[milestone, fill=mBrown!15, draw=mBrown] at (5.8,-0.9) {
+  \node[milestone, fill=mBrown!15, draw=mBrown] at (5,-0.9) {
     Apr 7--9\\\textbf{This talk}
   };
-  \draw[mBrown] (5.8,-0.5) -- (5.8,-0.1);
+  \draw[mBrown] (5,-0.5) -- (5,-0.1);
 \end{tikzpicture}
 \note{
-  \textbf{Key point:} Three reservation windows before this presentation.\\
-  \textbf{Say:} Our timeline. We couldn't get r650 nodes until March 27,
-  so we ran a pre-deadline set on r6525---different hardware, AMD instead
-  of Intel. We have two more r650 windows for hardware-matched data.\\
+  \textbf{Key point:} Four phases of experiment runs.\\
+  \textbf{Say:} Our timeline. Pre-deadline we ran on r6525---AMD, different
+  from the paper's Intel. Then four runs on r650 debugging RDMA over RoCE---
+  turns out you need an internal VLAN, not the control network. Finally
+  this weekend we collected hardware-matched data on 5 compute nodes.\\
   \textbf{Transition:} Let me tell you what happened.\\
   \textbf{Time:} 30s
 }
@@ -303,7 +358,34 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% Slide 12 — Challenge: Tooling Issues
+% Slide 12 — Challenge: RoCE Configuration
+\begin{frame}{Challenge: RDMA on Ethernet (RoCE)}
+\centering
+\begin{tikzpicture}[
+  issue/.style={draw=mRed!40, rounded corners=4pt, minimum width=3.2cm,
+                minimum height=1.4cm, align=center, font=\small},
+]
+  \node[issue] at (-4.5,0.5) {Control net RDMA\\$\to$ quarantine};
+  \node[issue] at (0,0.5) {4 mlx5 devices\\only 1 active};
+  \node[issue] at (4.5,0.5) {Wrong GID index\\$\to$ silent fail};
+  \node[font=\scriptsize\itshape, mGray, align=center] at (0,-1.2)
+    {6 config changes needed: IB\_DEV\_NAME\_IDX, IBV\_MTU,\\
+     MLX\_GID, hop\_limit, VLAN setup, memcached binding};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} r650 uses RoCE, not InfiniBand---6 config changes needed.\\
+  \textbf{Say:} The hardest part: the r650 at Clemson uses RoCE---RDMA over
+  Ethernet---not InfiniBand like the paper assumes. If you run RDMA on the
+  control network, CloudLab quarantines your account. The NIC exposes 4
+  mlx5 devices but only one is active. We needed to find the right device
+  index, GID index, MTU, hop limit, and VLAN interface. This took four
+  runs to debug---six separate config changes in total.\\
+  \textbf{Transition:} There were other issues too.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% Slide 13 — Challenge: Tooling Issues
 \begin{frame}{Challenge: Tooling Issues}
 \centering
 \begin{tikzpicture}[
@@ -312,15 +394,15 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 ]
   \node[issue] at (-4.5,0) {YCSB 0.17\\API change};
   \node[issue] at (0,0) {16\,GB root\\partition};
-  \node[issue] at (4.5,0) {No internal\\network};
+  \node[issue] at (4.5,0) {Node count\\$<$ paper's 10};
 \end{tikzpicture}
 \note{
-  \textbf{Key point:} Three tooling/environment issues.\\
+  \textbf{Key point:} Three more tooling/environment issues.\\
   \textbf{Say:} Three more issues. YCSB changed its Java package name
   between versions---broke the workload generator. The r6525 root
   partition is only 16 gigs---builds and logs fill it fast, so we moved
-  everything to NVMe. And there's no internal network on r6525, so
-  memcached had to use public IPs.\\
+  everything to NVMe. And we never got the paper's 10 compute nodes---
+  r650 availability at Clemson is heavily contended.\\
   \textbf{Transition:} Here's what we did about each.\\
   \textbf{Time:} 50s
 }
@@ -371,17 +453,18 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 \begin{tikzpicture}[
   item/.style={font=\normalsize, anchor=west},
 ]
-  \node[item] at (0, 1.5) {{\color{mTeal}$\boldsymbol{\sim}$}~~r6525 experiments (in progress)};
-  \node[item] at (0, 0.5) {{\color{mGray}$\bigcirc$}~~r650 full run (Mar 27)};
-  \node[item] at (0,-0.5) {{\color{mGray}$\bigcirc$}~~r650 re-run 10\,CN (Apr 3)};
-  \node[item] at (0,-1.5) {{\color{mGray}$\bigcirc$}~~Hardware-matched comparison};
+  \node[item] at (0, 2.0) {{\color{mGreen}\checkmark}~~r6525 all figures (9\,CN, Mar 23--26)};
+  \node[item] at (0, 1.0) {{\color{mGreen}\checkmark}~~r650 Fig~15a/15b ablation (5\,CN, Mar 28 + Apr 6)};
+  \node[item] at (0, 0.0) {{\color{mGreen}\checkmark}~~r650 Fig~12 YCSB C, D, E (5\,CN, Apr 6--7)};
+  \node[item] at (0,-1.0) {{\color{mTeal}$\boldsymbol{\sim}$}~~r650 Fig~12 YCSB A, B, LOAD (in progress)};
+  \node[item] at (0,-2.0) {{\color{mGray}$\bigcirc$}~~CXL transport experiments (Part Two)};
 \end{tikzpicture}
 \note{
-  \textbf{Key point:} Pre-deadline experiments running; two r650 windows ahead.\\
-  \textbf{Say:} Status check. The r6525 pre-deadline experiments are still
-  running. We have two more r650 windows to get hardware-matched data.
-  The final presentation will include those results and a direct comparison
-  to the paper.\\
+  \textbf{Key point:} Most experiments complete on hardware-matched r650.\\
+  \textbf{Say:} Status check. We completed all figures on r6525 pre-deadline,
+  then re-ran on the paper-matched r650 hardware. Both ablation figures are
+  complete. Fig~12 has three of six workloads done on r650, with the remaining
+  three in progress. CXL experiments are planned for Part Two.\\
   \textbf{Transition:} What have we learned so far?\\
   \textbf{Time:} 30s
 }
@@ -483,36 +566,106 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% Slide 19 — Placeholder Early Results
-\begin{frame}{Early Results}
+% Slide 19 — Ablation Results (fig_15a)
+\begin{frame}{Result: Sherman $\to$ CHIME Ablation (r650)}
 \centering
-\IfFileExists{figures/fig_12_a.pdf}{%
-  \includegraphics[width=0.9\textwidth]{figures/fig_12_a.pdf}%
+\IfFileExists{figures/fig_15a.pdf}{%
+  \includegraphics[width=0.95\textwidth]{figures/fig_15a.pdf}%
+}{%
+  \includegraphics[width=0.95\textwidth]{../exp/results/fig_15a.pdf}%
+}
+\note{
+  \textbf{Key point:} Each CHIME technique adds measurable throughput.\\
+  \textbf{Say:} Here's our actual r650 data for Fig 15a---the Sherman-to-CHIME
+  ablation. Each bar adds one technique. Hopscotch leaves give the biggest jump---
+  3x on reads. Metadata replication adds another 50\% on read-heavy workloads.
+  Speculative leaf read tops it off for YCSB B and C. The pattern matches
+  the paper's claims closely.\\
+  \textbf{Transition:} We also have the ROLEX ablation.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% Slide 20 — Ablation Results (fig_15b)
+\begin{frame}{Result: ROLEX $\to$ CHIME Ablation (r650)}
+\centering
+\IfFileExists{figures/fig_15b.pdf}{%
+  \includegraphics[width=0.95\textwidth]{figures/fig_15b.pdf}%
+}{%
+  \includegraphics[width=0.95\textwidth]{../exp/results/fig_15b.pdf}%
+}
+\note{
+  \textbf{Key point:} CHIME techniques also improve the learned index baseline.\\
+  \textbf{Say:} Fig 15b starts from ROLEX---the learned index---and adds
+  CHIME's techniques incrementally. Metadata replication is the biggest win
+  here, nearly doubling throughput on read-heavy workloads. This confirms
+  the techniques are general, not specific to the B+ tree baseline.\\
+  \textbf{Transition:} And our throughput-latency data.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+% Slide 21 — Throughput-Latency (fig_12_c)
+\begin{frame}{Result: Throughput vs Latency --- YCSB C (r650)}
+\centering
+\IfFileExists{figures/fig_12_c.pdf}{%
+  \includegraphics[width=0.9\textwidth]{figures/fig_12_c.pdf}%
 }{%
   \begin{tikzpicture}
     \draw[mGray!40, dashed, rounded corners=4pt] (0,0) rectangle (10,5.5);
     \node[mGray, align=center, font=\normalsize] at (5,2.75)
-      {Results pending\\[0.8em]
-       {\small Data collection in progress on r650 cluster}};
+      {Fig~12 YCSB~C plot\\[0.4em]
+       {\small 5 methods, 5\,CN, r650 at Clemson}\\
+       {\small CHIME: 19.5 Kops/s at 8.7\,$\mu$s P50}};
   \end{tikzpicture}%
 }
 \note{
-  \textbf{Key point:} [PLACEHOLDER --- update with actual findings]\\
-  \textbf{Say:} [PLACEHOLDER --- describe what the data shows.
-  If no data: ``Our experiments are still running on the r650
-  cluster. We'll have hardware-matched results for the final
-  presentation. For now, I've walked you through our methodology
-  and what we expect to see based on the paper's claims.'']\\
+  \textbf{Key point:} CHIME dominates on read-only workload.\\
+  \textbf{Say:} YCSB C is 100\% reads. CHIME reaches 19.5 thousand ops
+  per second with only 8.7 microseconds P50 latency---roughly 2.5x Sherman
+  and 1.7x ROLEX. The speculative leaf read really shines here because every
+  operation benefits from the hotspot buffer. Note we're running 5 compute
+  nodes, not the paper's 10, so absolute throughput is lower but the
+  relative ordering matches.\\
   \textbf{Transition:} Let's look at what's next---our CXL plan.\\
-  \textbf{Time:} 40s
+  \textbf{Time:} 50s
 }
 \end{frame}
 
 % ============================================================
-% SECTION 5: CXL Plan (5 slides, ~3.5 min)
+% NEW SECTION: Stress-Testing Finding (1 slide)
 % ============================================================
 
-\section{CXL Plan}
+\section{Stress-Testing Finding}
+
+\begin{frame}[fragile]{Sherman LOAD Crash on RDMA}
+\small
+At 3 CN $\times$ 64 threads on r650, Sherman crashed deterministically at $\sim$5\,M keys:
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single]
+Assertion `k >= fence_keys.lowest' failed
+  at src/Tree.cpp:382
+\end{lstlisting}
+
+\begin{itemize}[nosep]
+    \item The assertion has escape hatches for $k \ge$ \texttt{highest} (sibling-walk) and \texttt{from\_cache} staleness, but \emph{none} for $k < $ \texttt{lowest} on a fresh non-cached read.
+    \item Concurrent borrow/merge that grows N's lower fence key, before the parent pointer is updated, exposes a stale-descent window.
+    \item CHIME's \texttt{SIBLING\_BASED\_VALIDATION} and \texttt{VACANCY\_AWARE\_LOCK} close that window --- which is why CHIME completes LOAD on the same input.
+\end{itemize}
+
+\textbf{Framing:} this empirically reinforces the paper's claim that the techniques are jointly necessary, not merely a throughput stack.
+\note{
+  \textbf{Key point:} A stress finding independent of the CXL story.\\
+  \textbf{Say:} While reproducing fig\_12, we tried to run Sherman LOAD at full per-CN concurrency. It crashed deterministically every time, around 5 million keys. The assertion at Tree.cpp 382 has escape hatches for $k \ge$ highest and for cache staleness, but no escape for $k <$ lowest on a non-cached read. Under concurrent borrow or merge that grows N's lower fence key before the parent pointer updates, a thread can descend through a stale parent into a node whose fence has just been widened. CHIME's sibling-based validation and vacancy-aware lock close that exact window --- which is why CHIME completes LOAD on the same workload. The crash is a baseline limitation, not a fixable bug. It's a finding that empirically reinforces the paper's joint-necessity claim.\\
+  \textbf{Transition:} Now to Part Two: the CXL port.\\
+  \textbf{Time:} 70s
+}
+\end{frame}
+
+% ============================================================
+% SECTION 5: CXL Port (now describing what was built and what was blocked)
+% ============================================================
+
+\section{CXL Port}
 
 % Slide 20 — Why CXL?
 \begin{frame}{RDMA vs.\ CXL}
@@ -592,43 +745,110 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% Slide 24 — Part Two Timeline
-\begin{frame}{Part Two Timeline}
-\centering
-\begin{tikzpicture}[
-  >=Stealth,
-  milestone/.style={draw, rounded corners=3pt, minimum height=0.8cm,
-                    align=center, font=\scriptsize, minimum width=2.6cm},
-]
-  \draw[->, thick, mGray] (-6.5,0) -- (6.5,0);
-
-  \node[milestone, fill=mBrown!15, draw=mBrown] at (-4.5,0.8) {
-    Apr 7--9\\This talk
-  };
-  \draw[mBrown] (-4.5,0.4) -- (-4.5,0.1);
-
-  \node[milestone, fill=mTeal!12, draw=mTeal] at (-0.8,0.8) {
-    April\\Transport layer
-  };
-  \draw[mTeal] (-0.8,0.4) -- (-0.8,0.1);
-
-  \node[milestone, fill=mTeal!12, draw=mTeal] at (3,0.8) {
-    Late April\\CXL experiments
-  };
-  \draw[mTeal] (3,0.4) -- (3,0.1);
-
-  \node[milestone, fill=mBrown!15, draw=mBrown] at (5.8,-0.9) {
-    May 5\\Final report
-  };
-  \draw[mBrown] (5.8,-0.5) -- (5.8,-0.1);
-\end{tikzpicture}
+% Slide 24 — CXL Engineering Completed
+\begin{frame}{CXL Engineering: What We Built}
+\small
+\begin{tabular}{@{}p{0.42\textwidth}p{0.52\textwidth}@{}}
+\toprule
+\textbf{Artifact} & \textbf{Status} \\
+\midrule
+\texttt{CxlTransport} / \texttt{CxlDSM}        & Single-flag transport swap (\texttt{USE\_CXL=ON}) \\
+\texttt{Dockerfile.cxl-preflight}              & Reproducible build from clone \\
+5-blocker fix sequence (\texttt{152b4e9}$\to$\texttt{e430d8d}) & All blockers closed in Docker \\
+\texttt{exp/run\_harness.py}                   & Debug capture on failure (8/8 tests) \\
+\texttt{exp/fig\_14\_surrogate.py}             & 60M-key cache surrogate (5/5 tests) \\
+\texttt{exp/plot\_fig\_12\_three\_way.py}      & 3-way comparison plotter (5/5 tests) \\
+\texttt{smoke-gate.sh}                         & 5\,s LOAD + 30\,s YCSB C automated gate \\
+\texttt{runbook-day1.md}                       & T+0:00 to T+7:30 hardware-window playbook \\
+\bottomrule
+\end{tabular}
+\vspace{0.3em}
+\centering\small
+{\color{mGreen}\textbf{18 unit tests passing, builds clean, reproducible from clone.}}
 \note{
-  \textbf{Key point:} Implementation in April, experiments late April, report May 5.\\
-  \textbf{Say:} The plan: implement the transport abstraction in April,
-  run CXL experiments on the r650 nodes we already have reserved, and
-  submit the final report May 5th.\\
-  \textbf{Transition:} Let me wrap up with key takeaways.\\
-  \textbf{Time:} 20s
+  \textbf{Key point:} Engineering side of Part Two is fully done.\\
+  \textbf{Say:} Everything we could build off-hardware, we built and tested. The transport port itself, the Docker preflight that catches build regressions in two minutes of CI, the harness that auto-captures debug artifacts on any failure, a single-point cache-consumption surrogate, the three-way plot helper, and an automated smoke gate that defines what "the CXL port works" means in 35 seconds of cluster time. Eighteen unit tests pass. Reproduces from clone via Docker. None of this depends on a successful runtime evaluation.\\
+  \textbf{Transition:} What we couldn't do is run any of it on r650.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
+% ============================================================
+% NEW SECTION: Postmortem (3 slides)
+% ============================================================
+
+\section{CloudLab Postmortem}
+
+% Slide — Reservation Outage Timeline
+\begin{frame}{The Reservation Outage}
+\small
+Four r650 Clemson reservations against project \texttt{CS620426SP}, April 22--26:
+\vspace{0.3em}
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Window & UUID (truncated) & Hardware & Outcome \\
+\midrule
+Apr 22, 8h auto              & \texttt{43677ece}\ldots & 2$\times$r650 & Expired unused \\
+Apr 23, 8h auto              & \texttt{5565ec96}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
+Apr 20--25, 5d admin         & \texttt{8c36e934}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
+Apr 21--26, 5d admin         & \texttt{cc0bf3c0}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.5em}
+\textbf{80+ hours of approved capacity. Zero nodes ever provisioned.}
+\note{
+  \textbf{Key point:} Four reservations, none honored.\\
+  \textbf{Say:} Four reservations, totaling more than 80 hours of approved capacity. The April 22 window we lost ourselves --- pre-hardware tooling overran the start. The other three were CloudLab. Every single startExperiment against an active reservation failed within ninety seconds with the same error.\\
+  \textbf{Transition:} Here is that error, verbatim.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+% Slide — The Misleading Error
+\begin{frame}[fragile]{The Misleading Scheduler Error}
+\small Every \texttt{startExperiment} returned within $\sim$90\,s:
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single,breaklines=true]
+*** Resource reservation violation: 2 nodes of type
+    r650 requested, but only 0 available because of
+    existing resource reservations to other projects
+    or users.
+\end{lstlisting}
+
+\textbf{The diagnostic CLI is also broken:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single,breaklines=true]
+$ reservationStatus 5565ec96-3ebe-...
+Undefined subroutine &main::DoStatus called at
+/usr/testbed/bin/manage_resgroup line 208.
+\end{lstlisting}
+
+\begin{itemize}[nosep]
+    \item ``Other projects or users'' --- but our active reservations \emph{were} CS620426SP.
+    \item No CLI path to inspect reservation state. PEM cert authenticates the XML-RPC layer; JWT authenticates the web cookies. Neither bridges the gap.
+\end{itemize}
+\note{
+  \textbf{Key point:} The error is misleading and the CLI to diagnose it is broken server-side.\\
+  \textbf{Say:} The scheduler error attributes the held capacity to "other projects or users" --- but the user has approved CS620426SP reservations active right now. To diagnose the mismatch, you'd want reservationStatus. That CLI returns a Perl runtime error from the server. There is no client-side fix for that. PEM client cert authenticates the XML-RPC CLI; JWT authenticates web cookies; neither path can read reservation state.\\
+  \textbf{Transition:} Here is what would have unblocked us.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
+% Slide — What Would Have Unblocked Us
+\begin{frame}{What Would Have Unblocked Us}
+\small Three concrete CloudLab API improvements, each individually sufficient:
+\vspace{0.3em}
+\begin{itemize}
+    \item[\textbf{1.}] \textbf{Fix \texttt{reservationStatus}.} The server-side error is a one-line Perl bug at \texttt{manage\_resgroup} line 208. Restoring the RPC restores the only programmatic path to inspect reservation state.
+    \item[\textbf{2.}] \textbf{Make the scheduler error precise.} ``0 available, other projects or users'' is wrong when the holder is the same project under an unmatched binding. Naming the conflicting reservation UUID would point at the root cause immediately.
+    \item[\textbf{3.}] \textbf{Add \texttt{startExperiment --reservation <uuid>}.} Reservation-to-experiment binding is currently implicit. An explicit flag returns ``hardware type X but profile asks for Y'' on the spot.
+\end{itemize}
+\note{
+  \textbf{Key point:} Three engineering fixes, each individually sufficient.\\
+  \textbf{Say:} Three improvements would have closed this. Fix the Perl bug. Make the scheduler error specific to the actual conflict. Add an explicit reservation-binding flag to startExperiment. Each one is independently sufficient to have surfaced our root cause within the first failed window. We submitted these as a structured change request to CloudLab support.\\
+  \textbf{Transition:} What's left, what's next.\\
+  \textbf{Time:} 50s
 }
 \end{frame}
 
@@ -636,25 +856,41 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 % SECTION 6: Close (3 slides, ~2 min)
 % ============================================================
 
-% Slide 25 — Key Takeaways
+% Slide — Future Work
+\begin{frame}{Future Work}
+\small Hardware time, reasoned about as cost-of-experiment:
+\vspace{0.3em}
+\begin{itemize}[nosep]
+    \item \textbf{Smoke gate first.} The first datum --- pass/fail on 5\,s LOAD + 30\,s YCSB C --- is more informative than any speculation in this deck.
+    \item \textbf{Single-CN fig\_12 sweep on CXL.} If the gate passes, this is the central evaluation artifact (~3 hours).
+    \item \textbf{RDMA single-node baseline + per-thread regression check.} Validates the transport refactor didn't silently break RDMA (~1.5 hours).
+    \item \textbf{fig\_15a/b ablation on CXL.} Per-technique deltas tell us which optimizations remain load-bearing when transport latency drops 10$\times$ (~1.5 hours).
+    \item \textbf{Sibling-method CXL ports} (Sherman, SMART, ROLEX, Marlin). Each requires its own transport substitution, not all are 5-blocker series.
+    \item \textbf{Real CXL hardware.} Adds protocol-credit accounting that NUMA emulation does not model.
+\end{itemize}
+\note{
+  \textbf{Key point:} Concrete future work, ordered by information value per cluster hour.\\
+  \textbf{Say:} If a reservation opens up, here's the order of operations. Smoke gate first --- 35 seconds tells you whether the port runs at all. fig\_12 on CHIME-CXL is the central artifact. The RDMA single-node baseline plus a per-thread regression check confirms the refactor didn't silently break RDMA. The ablation tells us which optimizations still pay off when latency drops by an order of magnitude. Then sibling ports, then real CXL.\\
+  \textbf{Transition:} Three takeaways.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% Slide 25 — Key Takeaways (updated for final)
 \begin{frame}{Key Takeaways}
 \centering
 \begin{tikzpicture}[
-  item/.style={font=\normalsize, anchor=west},
+  item/.style={font=\small, anchor=west, text width=10cm},
 ]
-  \node[item] at (-4, 1.2) {{\color{mTeal}\textbf{1}}~~Hybrid indexes break the trade-off};
-  \node[item] at (-4, 0)   {{\color{mTeal}\textbf{2}}~~Reproduction is harder than it looks};
-  \node[item] at (-4,-1.2) {{\color{mTeal}\textbf{3}}~~CXL will change the game};
+  \node[item] at (-5, 2)   {{\color{mTeal}\textbf{1}}~~Hybrid B+/hopscotch genuinely breaks the cache vs.\ read-amp trade-off; reproduction trends matched the paper.};
+  \node[item] at (-5, 0.5) {{\color{mTeal}\textbf{2}}~~CHIME's techniques are jointly necessary for correctness, not just throughput --- Sherman's LOAD crash is the empirical proof.};
+  \node[item] at (-5,-1)   {{\color{mTeal}\textbf{3}}~~Engineering effort and infrastructure access are different gates --- clearing the first does not clear the second.};
 \end{tikzpicture}
 \note{
-  \textbf{Key point:} Three things to remember.\\
-  \textbf{Say:} Three things to remember. CHIME's hybrid B+ tree plus
-  hopscotch design genuinely breaks the cache vs read-amp trade-off.
-  Reproducing systems research is harder than reading the paper---hardware
-  availability, tooling drift, and configuration issues dominate the work.
-  And CXL is going to change how we think about disaggregated memory indexes.\\
+  \textbf{Key point:} Three closing points.\\
+  \textbf{Say:} Three takeaways. CHIME's hybrid design genuinely works --- our reproduction trends match the paper for the figures we collected. CHIME's techniques are jointly necessary for correctness, not just for throughput; the Sherman crash demonstrates that empirically. And engineering effort and infrastructure access are different gates --- the same week we shipped a clean CXL port, automated harness, smoke gate, and runbook, we could not get one node provisioned. That's the project in three sentences.\\
   \textbf{Transition:} Thank you.\\
-  \textbf{Time:} 40s
+  \textbf{Time:} 50s
 }
 \end{frame}
 
@@ -698,8 +934,14 @@ CXL Consortium.
 \end{frame}
 
 % Slide 27 — Questions
-\begin{frame}[standout]
-  Questions?
+{
+\setbeamercolor{background canvas}{bg=myRed}
+\begin{frame}[plain]
+\vspace*{\fill}
+\begin{center}
+{\color{white}\Huge\bfseries Questions?}
+\end{center}
+\vspace*{\fill}
 \note{
   \textbf{Key point:} Open floor.\\
   \textbf{Say:} Thank you. Happy to take questions about the reproduction,
@@ -708,5 +950,6 @@ CXL Consortium.
   \textbf{Time:} remainder
 }
 \end{frame}
+}
 
 \end{document}

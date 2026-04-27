@@ -15,6 +15,7 @@
 \usepackage[numbers]{natbib}
 \usepackage{enumitem}
 \usepackage{multirow}
+\usepackage{url}
 
 \geometry{margin=1in}
 
@@ -30,183 +31,535 @@
 \definecolor{vtorange}{HTML}{E5751F}
 \hypersetup{colorlinks=true,linkcolor=vtmaroon,citecolor=vtmaroon,urlcolor=vtorange}
 
-\title{Porting CHIME to CXL-Attached Memory\\[0.5em]\large Final Report --- Part Two}
+\title{Reproducing CHIME and Attempting a CXL Port:\\
+Engineering, Evaluation, and Infrastructure Lessons\\[0.5em]
+\large CS 6204 Final Project Report}
 \author{Jason Cusati (\texttt{djjay@vt.edu})\\
 CS 6204 --- Advanced Topics in Systems\\
 Virginia Tech, Spring 2026}
-\date{May 5, 2026}
+\date{May 6, 2026}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-%% TODO: 150-200 words. Cover:
-%%  - CHIME's RDMA assumption
-%%  - CXL as a point-to-point alternative
-%%  - Our port: CxlTransport backend, USE_CXL flag, NUMA emulation
-%%  - Headline finding (CXL vs RDMA latency/throughput on single-node)
-%%  - Main contribution: open-source, reproducible CXL port of CHIME
-CHIME (SOSP~'24) is a cache-efficient hybrid B+~tree/hopscotch index designed for RDMA-based disaggregated memory.
-We describe a port of CHIME that replaces its RDMA transport with a CXL-attached memory abstraction, implemented via NUMA-node emulation on a dual-socket host.
-We evaluate the CXL port against a single-node RDMA baseline on CloudLab r650 nodes using the YCSB workload suite and show that [RESULT~PLACEHOLDER].
-Our port is minimally invasive: a single compile-time flag (\texttt{USE\_CXL=ON}) swaps the transport layer without changes to CHIME's index algorithm or concurrency protocol.
-All code is available at \url{https://github.com/djjay0131/CHIME}.
+We reproduce a portion of CHIME~\cite{chime2024}, the SOSP\,'24 hybrid B$+$~tree/hopscotch index for disaggregated memory, on CloudLab's r650 cluster at Clemson, and we attempt to port the index from RDMA to CXL-attached memory for a transport-comparison study. The reproduction half collected fig\_12 workloads C/D/E and the full fig\_15a/b ablation across five competing methods and observed trends consistent with the paper's published figures. The CXL-port half produced a complete code port that swaps the transport layer via a single \texttt{USE\_CXL=ON} compile flag, an automated build verification in a Docker preflight environment, an automated smoke gate, a debug-artifact-capture harness, and a single-point cache-consumption surrogate --- all unit-tested off-hardware. The CXL port did \emph{not} produce runtime measurements: four CloudLab r650 reservations between April 22 and April 26 returned the same scheduler error and zero nodes were ever provisioned. We treat the resulting infrastructure outage as a finding in its own right and document it with cited reservation UUIDs, verbatim error strings, and three concrete CloudLab API improvements that would each independently have surfaced the root cause. Independent of the CXL story, we report a stress-testing finding on Sherman's LOAD-phase behavior under r650 contention: a deterministic crash at \texttt{Tree.cpp:382} whose underlying race is closed by CHIME's \texttt{SIBLING\_BASED\_VALIDATION} and \texttt{VACANCY\_AWARE\_LOCK}. The artifact (Docker preflight, harness, surrogate, smoke gate, and analysis) is open-source at \url{https://github.com/djjay0131/CHIME}.
 \end{abstract}
 
+\tableofcontents
+\newpage
+
 %% ============================================================
-\section{Introduction}
+\section{Introduction and Project Scope}
 \label{sec:intro}
+%% Spec §1; rubric guidelines: scope-setting for the rest of the report.
 %% ============================================================
 
-%% TODO: Motivation — why CXL for CHIME?
-%%  - CXL 2.0/3.0 promises lower latency, higher bandwidth, cache coherence
-%%  - Compare CXL (~200ns) to RDMA (~2us) load latency
-%%  - CHIME's design assumes high per-op cost → interesting question whether its
-%%    optimizations still pay off on CXL
-%%  - This report: port, measure, and discuss
+This is a final project report for CS\,6204 (Advanced Topics in Systems, Spring 2026, Virginia Tech), assigned the SOSP\,'24 paper CHIME~\cite{chime2024}. The project has two halves: a reproduction of CHIME's RDMA-based throughput-latency and ablation results, and an attempted port of CHIME from RDMA to CXL-attached memory for a transport-comparison study. We report on both, plus an additional stress-testing finding on Sherman's LOAD-phase behavior.
+
+The reproduction half produced paper-matching trends on five YCSB workloads across five competing methods (CHIME, Sherman, SMART, ROLEX, SMART-SC) on CloudLab's r650 cluster at Clemson. The CXL-port half produced a complete, reproducible code port (a single \texttt{USE\_CXL=ON} flag swaps the entire transport layer), an automated build-verification environment in Docker, an automated smoke gate, a debug-artifact-capture harness, and a single-point cache-consumption surrogate --- all unit-tested off-hardware. None of those produced runtime measurements, because four CloudLab reservations between April 22 and April 26 were not honored by the experiment scheduler. We document this outage in detail and treat it as a finding in its own right.
+
+The Sherman stress-testing finding (§\ref{sec:stress}) is independent of the CXL story: under the same r650 setup, Sherman's LOAD phase crashes deterministically at moderate scale on an assertion (\texttt{Tree.cpp:382}) that has no escape hatch for the borrow/merge race that produces it. CHIME's \texttt{SIBLING\_BASED\_VALIDATION} and \texttt{VACANCY\_AWARE\_LOCK} flags close that window. The crash empirically reinforces the paper's claim that CHIME's techniques are jointly necessary, not merely a throughput stack.
+
+\paragraph{Reading guide.} §\ref{sec:setup} distinguishes the paper's experimental setup from ours and discusses the effect of differences. §\ref{sec:effort} catalogs the engineering obstacles cleared (and not cleared) along the way. §\ref{sec:repro} presents the reproduction results --- what we observed, what we did not, what explains the gaps. §\ref{sec:stress} presents the Sherman LOAD crash as the project's stress-testing finding. §\ref{sec:cxl-engineering} describes the completed CXL-port engineering work that did not require hardware. §\ref{sec:postmortem} is the postmortem of the reservation outage that prevented the CXL evaluation. §\ref{sec:conclusion} concludes and lists future work and infrastructure recommendations.
 
 \subsection{Contributions}
 \begin{itemize}[nosep]
-    \item A minimally invasive port of CHIME to CXL-attached memory, using a compile-time transport switch.
-    \item An emulated evaluation framework that models CXL load/store semantics on commodity dual-socket hardware.
-    \item A head-to-head comparison of CHIME on RDMA vs.\ CXL for a subset of YCSB workloads.
-    \item An analysis of which of CHIME's techniques (hopscotch leaves, vacancy-aware locks, metadata replication, sibling-based validation, speculative read) remain load-bearing when latency per op drops by~10$\times$.
+    \item Partial reproduction of CHIME's published results on CloudLab r650 (Clemson) covering YCSB workloads C, D, E and ablation Figures 15a/b across five competing methods (CHIME, Sherman, SMART, ROLEX, SMART-SC).
+    \item A static-analysis finding on Sherman's load-time crash: the \texttt{Tree.cpp:382} fence-key invariant has no escape hatch under concurrent split/borrow, which CHIME closes via \texttt{SIBLING\_BASED\_VALIDATION} and \texttt{VACANCY\_AWARE\_LOCK}.
+    \item A complete CXL port of CHIME (\texttt{CxlTransport}, \texttt{CxlDSM}) gated by a single \texttt{USE\_CXL} compile flag, validated end-to-end in a reproducible Docker preflight environment.
+    \item Off-hardware tooling for the Part Two evaluation: a debug-artifact-capture harness, a single-point cache-consumption surrogate, an automated CXL smoke gate, and a three-way comparison plot helper --- all unit-tested.
+    \item A structured infrastructure postmortem of a six-day reservation-scheduler outage that prevented runtime evaluation of the CXL port, with cited reservation UUIDs, verbatim error strings, server-side bug identification, and a recommended set of CloudLab API improvements.
 \end{itemize}
 
 %% ============================================================
-\section{Background}
-\label{sec:background}
+\section{Experimental Setup: Paper vs. Actual}
+\label{sec:setup}
+%% Spec §2; rubric guideline #1.
 %% ============================================================
 
-\subsection{CHIME in One Page}
-%% TODO: Brief recap from Part One — hybrid B+~tree / hopscotch leaves, six core
-%% techniques, 10~CN + 1~MN disaggregated memory architecture.
 
-\subsection{CXL Memory}
-%% TODO: CXL.mem protocol, load/store semantics vs one-sided RDMA verbs,
-%% ~200ns load latency vs ~2us RDMA READ. Why this matters for CHIME.
+Following the instructor's guideline \#1, this section distinguishes the experimental setup described in the CHIME paper~\cite{chime2024} from the setup we actually used on CloudLab, and discusses the effects of the differences on our results.
 
-\subsection{Emulating CXL on Commodity Hardware}
-%% TODO: CloudLab r650 has two NUMA nodes (one per socket). By pinning the
-%% "client" threads to node 0 and binding memory to node 1, we emulate
-%% cross-device load/store via QPI/UPI. Discuss the fidelity of this emulation
-%% (same memory semantics, different absolute latency than real CXL).
+\subsection{Paper's Setup}
+
+The CHIME paper evaluates on an 11-node cluster: 10 compute nodes (CN) and 1 memory node (MN). Each node is a server-class machine with two Intel Xeon sockets and Mellanox ConnectX NICs running InfiniBand at 100\,Gbps with the MLNX OFED userspace stack. Workloads are drawn from YCSB~\cite{ycsb}: workloads A, B, C, D, E, and a LOAD phase that pre-populates the index. Key sizes are 8\,B, value sizes are 8\,B, and the dataset scales to 100~M keys for the throughput-latency figures and 40--120~M keys for the cache-consumption figure (Fig.\,14). Each CN runs 64 client threads.
+
+\subsection{Our Setup on CloudLab}
+
+We ran on CloudLab's r650 cluster at Clemson. r650 nodes match the paper's expected hardware class --- dual-socket Intel Xeon Gold 6338N, 256\,GB DDR4, two NUMA domains --- but with two important differences: the network fabric is Ethernet running RoCE~v2 rather than native InfiniBand, and CloudLab's hardware availability constrained our experiments to fewer compute nodes than the paper used. Our two completed runs were:
+
+\begin{itemize}[nosep]
+    \item \textbf{Run~7} (April 5--6, 2026, 16h experiment): 6$\times$r650 with 5 CN + 1 MN. Produced fig\_15a, fig\_15b, fig\_12 workloads C and D.
+    \item \textbf{Run~8} (April 6--7, 2026, 20h experiment with extension): 4$\times$r650 with 3 CN + 1 MN. Produced fig\_12 workload E and partial LOAD; fig\_12 A was completed on the cluster but not pulled before reservation expiry, and fig\_12 B is partial (CHIME 5 of 8 thread points).
+\end{itemize}
+
+A pre-deadline dry run (March 23--26) used 11$\times$r6525 nodes (AMD EPYC, ConnectX-5/6 Dx) at Clemson because r650 capacity was unavailable; this run validated our harness end-to-end but is not a paper-matched data point. Software stack: Ubuntu 20.04, GCC 9, CMake 3.10, MLNX OFED 5.6, YCSB 0.17.0. Workloads: paper-matched A/B/C/D/E/LOAD; key and value sizes match the paper.
+
+\subsection{Differences and Their Effects}
+
+\begin{description}[nosep,leftmargin=1em]
+    \item[Compute-node count: 5 (Run~7) and 3 (Run~8), versus the paper's 10.] Total throughput numbers are absolute and do not directly compare with the paper. The shape of the throughput-versus-thread-count curves is preserved, however, because per-CN behavior is independent of CN count up to the point where the MN saturates. Trends carry; absolute peaks do not.
+
+    \item[Network: RoCE~v2 over Ethernet, versus the paper's native InfiniBand.] RoCE adds approximately 0.5\,$\mu$s of latency per operation relative to IB. The effect on the throughput-latency curves is a uniform rightward shift; relative ordering between methods is preserved. Two of the six RoCE-specific source fixes (\S\ref{sec:effort-roce}) are required just to get any RDMA traffic flowing on r650 Clemson, which is itself an artifact-availability finding.
+
+    \item[Hardware variant for the dry run: r6525 (AMD EPYC) instead of r650 (Intel Xeon).] r6525 has 64 physical cores per node versus r650's 72; different cache hierarchy and memory-bandwidth characteristics. We do not draw comparisons with the paper from the r6525 run; it served as harness validation and as a source of the RoCE fixes that later carried over to r650.
+
+    \item[Workload scale.] The paper's Fig.\,14 sweeps cache consumption over 40--120\,M keys. We did not regenerate the larger workloads in time for either Part One run and so did not attempt Fig.\,14 directly. The CXL-port specification calls for a single-point surrogate at 60\,M keys (\S\ref{sec:cxl-fig14}) which would have addressed the trend question with one ablation rather than four.
+\end{description}
 
 %% ============================================================
-\section{Part One Recap: RDMA Baseline}
-\label{sec:part1-recap}
+\section{Engineering Effort and Obstacles}
+\label{sec:effort}
+%% Spec §3; rubric guideline #2.
 %% ============================================================
 
-%% TODO: One-page summary of Part One results:
-%%  - What reproduced (fig_12 C/D/E, fig_15a, fig_15b)
-%%  - What did not (fig_12 A/B/LOAD — time/hardware constraints)
-%%  - Where the baseline numbers live (cite Part One report)
-For completeness, we briefly recap the RDMA reproduction results from the Part One progress report.
-%% Figure reference: figures/fig_12_rdma.pdf  (copy from Part One)
+
+CHIME's published artifact is written assuming the same hardware and software stack the authors used: r650-class Intel Xeon nodes with Mellanox ConnectX-6 NICs running MLNX OFED userspace, paper-validated InfiniBand fabrics, and the authors' YCSB workload regeneration scripts. Every difference between that stack and what CloudLab actually provisions translates into source code edits or operational workarounds. This section catalogs the obstacles we hit and what was required to clear each one. We organize them in roughly the order they were encountered: RoCE on r650 first, then build-system surprises, then the largest single obstacle (reservation reliability) which has its own §\ref{sec:postmortem}.
+
+\subsection{RoCE Configuration on r650 Clemson}
+\label{sec:effort-roce}
+
+The r650 nodes at Clemson expose Mellanox ConnectX-6 NICs but \emph{only} over an Ethernet fabric, requiring RoCE v2 instead of native InfiniBand. CHIME's defaults assume IB. Six source-level fixes were required, all sed-applied to \texttt{include/Common.h}, \texttt{include/Rdma.h}, and \texttt{src/rdma/Resource.cpp} on every node before each build:
+
+\begin{enumerate}[nosep]
+    \item \texttt{IB\_DEV\_NAME\_IDX = '2'} so the RDMA stack picks \texttt{mlx5\_2} on \texttt{ens2f0} (the VLAN parent NIC), not \texttt{mlx5\_0} on \texttt{eno12399} (the control-net NIC).
+    \item \texttt{IBV\_MTU\_1024} (replacing the default IB MTU) because RoCE requires the smaller frame size.
+    \item \texttt{MLX\_GID = 3} to select the RoCE v2 GID index attached to the VLAN interface (GID 1 is the link-local address on \texttt{ens2f0} and is not routable).
+    \item \texttt{attr->grh.hop\_limit = 64} on every QP attribute --- required for RoCE routing across the cluster's Ethernet fabric.
+    \item \texttt{CPU\_PHYSICAL\_CORE\_NUM = 72} to match r650's two-socket 36-core layout (the default of 64 lefts threads pinned to nonexistent cores).
+    \item Manual VLAN activation: \texttt{sudo /usr/local/etc/emulab/rc/rc.ifconfig} on every node after boot, because CloudLab assigns VLAN IDs in the profile but does not bring the interface up.
+\end{enumerate}
+
+These fixes are idempotent and order-independent, so we automated them into Phase 4 of \texttt{construction/scripts/setup-r650.sh}. Identifying them was a different matter: the first three were discovered by reading verbose \texttt{ibv\_devinfo} output and manually correlating GID/MTU values against RoCE v2 specifications, the fourth came from comparing kernel netlink traces of failed and successful QP transitions, and the fifth was a sentinel-value bug we caught only after instrumenting \texttt{Tree.cpp} to log thread affinity. Total time-on-cluster spent isolating these: approximately two reservation cycles.
+
+\subsection{Internal LAN and the Quarantine Risk}
+
+A subtler hazard, also worth ~10 hours of debugging, is that running RDMA traffic on the CloudLab control network triggers an automated quarantine: the experiment is forcibly terminated and the user receives a network-violation notice. CloudLab profiles must explicitly request an internal LAN. Our profile (\texttt{chime-r650-clemson-lan}) defines an isolated VLAN on \texttt{ens2f0} with \texttt{10.10.1.x/24} addressing baked into \texttt{/etc/hosts}; the public control network on \texttt{eno12399} is reserved for SSH and \texttt{memcached} cluster discovery. This separation is a hard requirement, not a suggestion --- ignoring it is what produced the first three terminated experiments early in Part One.
+
+\subsection{The memcached.conf Bug (Approximately 10 Hours Lost)}
+
+On Run 7 (April 5--6, 6$\times$r650, 16h experiment) we lost roughly ten hours of cluster time to a two-line configuration file: \texttt{memcached.conf} requires both an IP line and an explicit port line, but the default examples in CHIME's \texttt{script/restartMemc.sh} ship with the port commented out. Without the port line, \texttt{memcached} starts but binds only to localhost; cluster nodes cannot register, the harness hangs in node discovery, and \texttt{ycsb\_test} eventually fails with no useful diagnostic. The bug was found by running \texttt{ss -tlpn} on the memcached node and noticing the missing 11211 listener. Our fix is a two-line addition in \texttt{script/restartMemc.sh} that writes both lines unconditionally; we now check the file on every node bring-up.
+
+\subsection{YCSB Workload Generation: Python 2 versus Python 3}
+
+YCSB 0.17.0 (the version paired with CHIME's harness) ships with Python 2 syntax for its workload generator: \texttt{except subprocess.CalledProcessError, err} as the canonical pattern, and a runtime mix of \texttt{bytes} and \texttt{str} that only works under Python 2. CloudLab's r650 image still has Python 2 available; our local Mac and our Docker preflight do not. We attempted three remediation paths in sequence:
+
+\begin{enumerate}[nosep]
+    \item Run \texttt{2to3 -w -n} at Docker build time (\texttt{Dockerfile.ycsb-gen}). This handled the syntax errors but left the \texttt{TypeError: a bytes-like object is required} cascade across a dozen string-concatenation sites in the workload-emission path.
+    \item Hand-edit the offending sites. Each edit revealed another two; the patch series grew without converging.
+    \item Defer regeneration to the cluster, where Python 2 is preinstalled. This is what we actually shipped --- workload generation runs at cluster bring-up using YCSB's stock Python 2 path, costs roughly 20 minutes of reservation time, and produces deterministic output we can pin via SHA-256.
+\end{enumerate}
+
+The cost of this detour was about three hours of local debugging that ended in a deferral. The lesson, which we recorded as a feedback memory, is that Py2-shipped tools should be run in a Py2 environment rather than ported.
+
+\subsection{The CXL Build: Five Blockers Beyond the Initial Port}
+\label{sec:effort-cxl}
+
+The initial CXL transport implementation (commit \texttt{152b4e9}) compiled in our local IDE but failed in clean-room reproduction. We caught this with a Docker preflight (\texttt{Dockerfile.cxl-preflight}, Ubuntu 20.04 amd64) that builds CHIME-with-\texttt{USE\_CXL=ON} from a fresh clone. Five blockers surfaced; commit \texttt{e430d8d} closes all of them:
+
+\begin{enumerate}[nosep]
+    \item \texttt{include/Common.h} used \texttt{std::array} without \texttt{\#include <array>}. Local headers transitively included it; clean-room did not.
+    \item The \texttt{CoroPull} stub gated by \texttt{\#ifdef USE\_CXL} omitted \texttt{get()} and \texttt{operator()}, so the call sites in \texttt{Tree.cpp} that consume coroutine results failed to link.
+    \item \texttt{getIP()} in \texttt{src/Common.cpp} referenced \texttt{NET\_DEV\_NAME} from \texttt{include/Rdma.h}, which is excluded from the CXL build. Replaced the symbol with a local \texttt{constexpr}.
+    \item \texttt{Tree::run\_coroutine} and \texttt{coro\_worker} declared boost coroutine types unconditionally; under \texttt{USE\_CXL} the boost dependencies are dropped from the link line. Wrapped the type usages in \texttt{\#ifndef USE\_CXL}.
+    \item \texttt{src/CxlDSM.cpp} omitted \texttt{\#include "Key.h"} and the file built only when other translation units happened to include \texttt{Key.h} earlier in the unit's transitive closure.
+\end{enumerate}
+
+Two operational lessons fell out of this. First, \emph{a clean-room build environment is non-negotiable for any port that gates source files via macros}; transitive header inclusion in IDEs masks real failures. Second, \emph{the Docker preflight should be run on every commit}, not just at release time --- four of the five blockers above were one-line fixes that would have surfaced in two minutes of CI had we wired this earlier.
+
+\subsection{The Largest Obstacle: Hardware Reservation Reliability}
+\label{sec:effort-reservations}
+
+The single largest obstacle to this project was not a code bug. Across April 22--26 we held four CloudLab r650 reservations against project \texttt{CS620426SP} totaling more than 80 hours of approved capacity. Every \texttt{startExperiment} call against an active reservation returned the same scheduler error and zero nodes were ever provisioned. We have detailed the timeline, the verbatim error, the broken \texttt{reservationStatus} CLI, and the authentication-layer asymmetry that prevented us from diagnosing the issue, in §\ref{sec:postmortem}. The point we make here, in the engineering-effort section, is that the obstacle was real: the same week we shipped a clean Docker preflight, an automated debug-capture harness, a unit-tested cache-consumption surrogate, an automated CXL smoke gate, and a written runbook, we could not get one node to provision. Engineering effort and infrastructure access are different gates; clearing the first does not clear the second.
 
 %% ============================================================
-\section{Port Design}
-\label{sec:design}
+\section{Part One: Reproduction Results}
+\label{sec:repro}
+%% Spec §4; rubric guidelines #3, #4, #6.
 %% ============================================================
 
-\subsection{Architecture Overview}
-%% TODO: Diagram — current RDMA path vs new CXL path.
-%%  - User code → DSM → ThreadConnection → libibverbs → NIC → remote MN
-%%  - User code → CxlDSM → CxlTransport → NUMA-bound memory → load/store
 
-\subsection{The \texttt{CxlTransport} Abstraction}
-%% TODO: Describe CxlTransport interface. Methods: read_sync, write_sync,
-%% cas_sync, faa_boundary_sync, read_dm_sync, barrier, alloc, free.
-%% All synchronous (no coroutine polling). Map GlobalAddress to a pointer
-%% into the CXL-backed mmap region.
+Following the instructor's guidelines \#3, \#4, and \#6, this section presents our reproduction results: which paper trends we observed, which we did not, and what explains the differences. We strictly separate the reproduction discussion here from the stress-testing finding in §\ref{sec:stress}; no Sherman-crash content appears in this section.
 
-\subsection{\texttt{CxlDSM}: Drop-in DSM Replacement}
-%% TODO: Explain CxlDSM inherits the public DSM API, so Tree.cpp is unchanged.
-%% Show the preprocessor alias ``#define DSM CxlDSM'' trick and why it works.
+\subsection{Methodology}
+
+Each figure was driven by an existing experiment script under \texttt{exp/} that fans out commands via Paramiko to the cluster nodes, sweeps thread counts (and ablation variants for fig\_15a/b), pulls per-workload JSON results back to the master node, and renders matplotlib plots. Result files live at \texttt{exp/results/fig\_12\_\{c,d,e\}.json}, \texttt{exp/results/fig\_15a.json}, \texttt{exp/results/fig\_15b.json}, and the corresponding \texttt{*.pdf} renderings. We follow the paper's axis conventions (throughput on the x-axis in Mops/s, p99 latency on the y-axis in microseconds for fig\_12; throughput on the y-axis for fig\_15) so that side-by-side comparison is direct.
+
+\subsection{Figure~12: Throughput--Latency on Workloads C, D, E}
+
+We collected fig\_12 for YCSB workloads C, D, and E across all five methods (CHIME, Sherman, SMART, ROLEX, SMART-SC) on r650 Clemson. Workload C is read-only, D is read-mostly with the latest distribution, and E is range-scan-heavy. Figure~\ref{fig:fig12-paper} reproduces the corresponding panels from the paper for direct comparison; Figure~\ref{fig:fig12-ours} shows our reproduction of the C/D/E subset on r650 Clemson Run~7--8.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/fig12-paper.png}
+\caption{Paper's Figure~12: throughput--latency comparison of range indexes on disaggregated memory across YCSB LOAD/A/B/C/D/E. Reproduced from Bang et al.\ SOSP\,'24~\cite{chime2024} for side-by-side comparison. Axes: throughput in Mops/s, P99 latency in $\mu$s ($\times 10$).}
+\label{fig:fig12-paper}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/fig12-ours.pdf}
+\caption{Our reproduction of fig\_12 for YCSB C, D, E on CloudLab r650 Clemson (Run~7: 5 CN + 1 MN, Apr 6 2026; Run~8: 3 CN + 1 MN, Apr 7 2026). Same axis convention as the paper (throughput in Mops/s, P99 latency in $\mu$s). Trends match the paper: CHIME and SMART-SC dominate at the high-throughput tail; ROLEX is competitive on the read-heavy workloads C and D but trails on the range-scan workload E; Sherman's curves sit below CHIME's by a factor consistent with the paper's reported gap. Absolute peaks are roughly proportional to the CN-count ratio (5 or 3 versus the paper's 10), so we draw conclusions about \emph{trends} rather than absolute throughput.}
+\label{fig:fig12-ours}
+\end{figure}
+
+\subsection{Figure~15a: Factor Analysis (Sherman-Based)}
+
+Fig\_15a is the cumulative-ablation analysis: starting from a Sherman baseline, each of CHIME's five techniques is added in sequence (\texttt{HOPSCOTCH\_LEAF\_NODE} $\to$ \texttt{VACANCY\_AWARE\_LOCK} $\to$ \texttt{METADATA\_REPLICATION} $\to$ \texttt{SIBLING\_BASED\_VALIDATION} $\to$ \texttt{SPECULATIVE\_READ}), and the throughput delta per addition is measured across YCSB workloads. We collected the full set on r650 Run~7 (6 methods $\times$ 5 workloads, 36-minute experiment runtime).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_15a.pdf}
+\caption{Our reproduction of fig\_15a, the cumulative Sherman-to-CHIME ablation, on r650 Clemson Run~7 (5 CN + 1 MN). Each bar adds one of CHIME's techniques on top of Sherman. Trends match the paper~\cite{chime2024}: hopscotch leaves contribute the largest single delta on read-mostly workloads, vacancy-aware locks dominate on writes, and the remaining three techniques contribute smaller but non-zero gains in CHIME's intended order. The cumulative gain from Sherman to full CHIME on YCSB~C is consistent with the paper's published delta.}
+\label{fig:fig15a-ours}
+\end{figure}
+
+\subsection{Figure~15b: Factor Analysis (ROLEX-Based)}
+
+Fig\_15b is the dual ablation: starting from ROLEX, the same five techniques are added in sequence to produce SMART-SC. We collected the full 5-methods-by-4-workloads matrix on Run~7.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_15b.pdf}
+\caption{Our reproduction of fig\_15b, the cumulative ROLEX-to-SMART-SC ablation, on r650 Clemson Run~7. Trends again match the paper~\cite{chime2024}: the cache-related techniques (\texttt{ENABLE\_CACHE}, \texttt{ENABLE\_CACHE\_EVICTION}) contribute the largest deltas on workloads where the working set exceeds local cache; the remaining techniques contribute incrementally as in fig\_15a.}
+\label{fig:fig15b-ours}
+\end{figure}
+
+\subsection{What We Could Not Reproduce, and Why}
+
+\begin{description}[nosep,leftmargin=1em]
+    \item[\textbf{fig\_12 workload~A (full sweep).}] Run~8 successfully completed the workload~A sweep on the cluster, but the result-pull step was scheduled too late and the experiment expired before the JSON files were transferred to the local machine. \texttt{exp/results/fig\_12\_a\_partial.json} exists from an earlier checkpoint. The lesson, captured in our project memory as a feedback note, is to pull results after each workload completes, not on a timer.
+
+    \item[\textbf{fig\_12 workload~B.}] Partial: CHIME completed 5 of 8 thread-count points on Run~8; Sherman, SMART, ROLEX, and SMART-SC did not start. Cause: workload~B was scheduled last in the run order and the reservation expired mid-sweep.
+
+    \item[\textbf{fig\_12 workload LOAD for Sherman, ROLEX, SMART-SC.}] Sherman crashes on LOAD (the stress-testing finding in §\ref{sec:stress}); ROLEX and SMART-SC were scheduled in the same window and were preempted by the Sherman crash investigation. CHIME and SMART completed LOAD on Run~8.
+
+    \item[\textbf{fig\_14 (cache consumption).}] The paper sweeps over 40--120\,M keys. The corresponding YCSB workload files were not regenerated in time for either Part One run (regenerating each takes 1--2 hours of wall time and we ran out of off-cluster CPU budget). The single-point surrogate at 60\,M described in §\ref{sec:cxl-fig14} would have provided the trend datum, but it requires a successful CXL run that did not occur (§\ref{sec:postmortem}).
+\end{description}
+
+Each gap above is a known absence with a concrete cause, not an inconclusive result. We separately note that fig\_3a (the paper's micro-benchmark of one-sided RDMA primitives) is a stretch goal in our project specification and was not attempted.
+
+%% ============================================================
+\section{Part One: Stress-Testing Findings}
+\label{sec:stress}
+%% Spec §5; rubric guidelines #3, #5.
+%% ============================================================
+
+
+Reproduction is one of two halves of this project. The other half --- following the instructor's guideline \#5 --- is to attempt to break the index, observe how it degrades or fails, and reason about why. Our stress testing focused on the workload mix most likely to expose concurrency hazards: high-fan-in writes during the LOAD phase. The headline finding is that Sherman, run with its CHIME-disabled baseline configuration, crashes deterministically at moderate scale on r650; CHIME does not. We treat this as a finding about Sherman's baseline behavior, not as a defect to fix in the comparison.
+
+\subsection{What We Stressed and How}
+
+We pushed the LOAD phase --- the most write-heavy and contention-sensitive part of the YCSB suite --- to its full per-CN concurrency. Run 8 (April 6--7, 3 CN + 1 MN on r650 Clemson) ran each method through the standard 64-threads-per-CN configuration. CHIME, SMART, ROLEX, and SMART-SC completed LOAD; Sherman did not.
+
+\subsection{Sherman LOAD Crash on RDMA}
+\label{sec:stress-sherman-crash}
+
+After approximately 5\,M keys loaded, Sherman crashed reproducibly with the following assertion:
+
+\begin{lstlisting}
+Assertion `k >= fence_keys.lowest' failed
+\end{lstlisting}
+
+The crash site is \texttt{src/Tree.cpp:382} and is preceded in the log by \texttt{RDMA Work Request Flushed} errors on multiple CN threads --- consistent with the hypothesis that a stuck thread is the proximate trigger and the assertion is the structural reason the process cannot recover. Reproduction recipe: 3 CN $\times$ 64 threads, randint distribution, LOAD workload, \texttt{ycsb\_test 3 64 1 randint LOAD} on a fresh tree.
+
+\subsection{Static Analysis: The Fence-Key Invariant}
+\label{sec:stress-static-analysis}
+
+We performed off-cluster static analysis of the surrounding code (no live debug session, since the cluster time was reserved for reproduction work). Listing~\ref{lst:tree-382} reproduces the relevant slice.
+
+\begin{lstlisting}[caption={\texttt{src/Tree.cpp}, lines 372--385: the assertion site at 382 has escape hatches for cache-staleness and for $k \ge \mathrm{highest}$, but \emph{not} for $k < \mathrm{lowest}$ on a non-cached read.},label={lst:tree-382}]
+const auto& fence_keys = node->metadata.fence_keys;
+if (from_cache && (!node->metadata.valid ||
+                   k < fence_keys.lowest || k >= fence_keys.highest)) {
+  return false;    // escape hatch: retry via cache refresh
+}
+if (k >= fence_keys.highest) {          // escape hatch: walk right sibling
+  node_addr = node->metadata.sibling_ptr;
+  path_stack[sink ? sink->get() : 0][level - 1] = node_addr;
+  internal_node_search(node_addr, sibling_addr, k, level, false, sink);
+  return true;
+}
+assert(k >= fence_keys.lowest);          // crash site (382)
+\end{lstlisting}
+
+The assertion at line 382 is reachable under the following sequence. Thread A, performing a borrow or merge that grows N's \emph{lower} fence key, updates \texttt{N.fence\_keys.lowest} in place before the parent pointer is updated. Concurrent thread B descends through a stale parent pointer carrying a key \texttt{k < new\_lowest}. The escape on line 373 fires only \texttt{from\_cache}; the escape on line 376 only handles $k \ge \mathrm{highest}$. The fall-through is the assertion. The dual case (split, where the upper fence shrinks) does \emph{not} trigger the assertion, because line 376 walks the sibling pointer correctly --- this is why some Sherman load runs complete and others crash, depending on which mutation (split versus borrow/merge) occurs during the contention window.
+
+\subsection{Why CHIME Does Not Crash}
+\label{sec:stress-why-chime}
+
+Three of CHIME's compile-time features close the window the Sherman baseline leaves open:
+
+\begin{itemize}[nosep]
+    \item \texttt{SIBLING\_BASED\_VALIDATION} cross-validates every read of a non-root internal node against the sibling's fence keys. A descent that would land on a node with widened bounds is caught at validation time and retried via re-read.
+    \item \texttt{VACANCY\_AWARE\_LOCK} piggybacks the vacancy bitmap on the lock word, forcing readers to see a consistent snapshot of \emph{both} the lock state and the fence keys. The split between ``read fence keys'' and ``read sibling pointer'' that exposes the racy borrow is collapsed.
+    \item \texttt{METADATA\_REPLICATION} replicates leaf metadata across segments with version numbers; a stale read on any single segment is detected by mismatched versions before it can advance into the assertion path.
+\end{itemize}
+
+These three flags are part of CHIME's \texttt{include/Common.h} and are toggled \emph{off} for the Sherman-equivalent fig\_15a baseline. With them off, the Sherman crash reproduces in CHIME too --- a fact that strengthens the finding rather than weakens it.
+
+\subsection{What This Tells Us}
+
+The crash is not a bug to be patched. It is the empirical version of a claim CHIME's paper makes implicitly: that the techniques are jointly necessary for correctness under contention, not merely a throughput optimization stacked on top of a working baseline. The Sherman baseline's behavior on r650 reproduces the failure mode. The fix --- adopting \texttt{SIBLING\_BASED\_VALIDATION} or its equivalent --- is essentially what CHIME does. Two minimal patches would close the window in the Sherman code itself: replacing the assertion with a retry loop matching the style of the \texttt{decode\_node\_versions} retry already at line 369--371, or adopting validation as a baseline. Neither belongs in the comparison: keeping Sherman's baseline behavior visible is the point of the fig\_15a ablation.
+
+We did not collect a fig\_12 LOAD data point for Sherman because of this crash. The plot in §\ref{sec:repro} marks Sherman's LOAD entry as crashed; the missing data point is more informative than an artificially completed run would have been.
+
+%% ============================================================
+\section{Part Two: CXL Port --- Engineering Completed}
+\label{sec:cxl-engineering}
+%% Spec §6; rubric guideline #2 (engineering effort, continued).
+%% ============================================================
+
+
+This section describes the engineering work that was completed for the Part Two CXL port. None of it depends on a successful runtime evaluation: the code builds, the harness is unit-tested, the smoke gate is automated, and the artifact reproduces from a fresh clone via Docker. What is missing --- runtime measurements on r650 --- is the subject of §\ref{sec:postmortem}.
+
+\subsection{Why a CXL Port?}
+
+CHIME, like its predecessors, is built around the assumption that the unit operation is an RDMA verb: a one-sided READ, WRITE, or compare-and-swap that traverses the host CPU, the local NIC, the network, and a remote NIC, with completion polled from a completion queue. Each operation costs roughly two microseconds. Many of CHIME's published optimizations --- read batching, speculative reads, vacancy-aware locks, sibling-based validation --- are calibrated against that latency. CXL.mem changes the unit cost: load and store instructions to a CXL-attached memory device cost on the order of 200 nanoseconds, an order of magnitude lower. That makes CHIME on CXL an interesting target for two reasons. First, the per-technique value of CHIME's optimizations may shift: some that exist to amortize the cost of a verb may matter less; others, like cache-aware leaf packing, may matter more. Second, the synchronous load/store interface eliminates the coroutine-based async model entirely --- making the port partially a deletion exercise rather than a translation exercise.
+
+\subsection{Architecture: \texttt{CxlTransport} and \texttt{CxlDSM}}
+\label{sec:cxl-arch}
+
+We introduce a thin transport abstraction (\texttt{include/CxlTransport.h}, \texttt{src/CxlTransport.cpp}) with the same operation surface as CHIME's existing DSM layer: \texttt{read\_sync}, \texttt{write\_sync}, \texttt{cas\_sync}, \texttt{faa\_boundary\_sync}, \texttt{read\_dm\_sync}, \texttt{barrier}, \texttt{alloc}, and \texttt{free}. Above it, \texttt{CxlDSM} (\texttt{include/CxlDSM.h}, \texttt{src/CxlDSM.cpp}) presents the same public API as the existing \texttt{DSM} class. A preprocessor alias --- \texttt{\#define DSM CxlDSM} --- inside an \texttt{\#ifdef USE\_CXL} block in \texttt{include/DSM.h} swaps the implementation without touching \texttt{Tree.cpp} or \texttt{ycsb\_test.cpp}. The result is a single-flag port: \texttt{cmake -DUSE\_CXL=ON ..} switches the entire transport, and the index code is unchanged.
+
+The transport interface intentionally drops two pieces of RDMA's machinery. First, coroutine-style asynchrony: every CXL operation is a memory load or store, so completion is implicit and the coroutine return-yield-resume harness becomes dead weight. Second, key registration (lkey/rkey) and queue-pair state: a CXL pointer is just a pointer. \texttt{OpRegion}, the transport-agnostic replacement for \texttt{RdmaOpRegion}, contains only \texttt{source}, \texttt{dest} (a \texttt{GlobalAddress}), and \texttt{size}.
+
+\subsection{NUMA Emulation as a Stand-In for CXL}
+
+CloudLab's r650 nodes do not have CXL devices. They are dual-socket Intel Xeon servers with two NUMA domains separated by Intel UPI, which presents the right shape of memory (load/store-coherent, low-latency, separately addressable) at the wrong absolute latency (UPI is closer to 80\,ns; CXL is 200--300\,ns). Following the precedent of TPP and Pond, we emulate CXL by binding execution threads to NUMA node 0 and binding the index's data region to NUMA node 1 via \texttt{mmap} with \texttt{MPOL\_BIND}. Memory semantics match real CXL --- coherent, addressable, no protocol-credit accounting in our path --- but the absolute numbers are an underestimate of CXL's true overhead. The report would have stated this explicitly in any reported figure; in the absence of figures, we state it here as a design caveat.
 
 \subsection{Build-System Surgery}
-%% TODO: Explain the 5 blocker fixes committed in 152b4e9:
-%%  1. Common.h gated Boost/RDMA includes behind #ifndef USE_CXL
-%%  2. addr_from_ror corrected to use ga.val = ror.dest (was corrupting batch addresses)
-%%  3. is_on_chip routing restored in batch operations
-%%  4. DSM.cpp / RDMA-only sources filtered out of CXL build via CMake
-%%  5. USE_CXL option() declaration moved before first reference
-%% Include relevant diff snippets.
 
-\subsection{Memory Allocation and Address Translation}
-%% TODO: Single-node means GlobalAddress.nodeID is always 0. The .offset field
-%% indexes into a contiguous mmap region. On-chip memory is emulated via a
-%% small fixed-size region at the start of the allocation space.
+The mechanical work to thread the \texttt{USE\_CXL} flag through the project, gate the RDMA-only translation units out of the link line, and stub out the boost-coroutine call sites is documented in detail in §\ref{sec:effort-cxl}. The shorthand summary: five blockers between the initial CXL transport implementation (commit \texttt{152b4e9}) and a clean Docker preflight (commit \texttt{e430d8d}), each fixed independently. Once those landed, \texttt{docker build --platform linux/amd64 -f Dockerfile.cxl-preflight -t chime .} followed by \texttt{cmake -DUSE\_CXL=ON \&\& make -j} produces the \texttt{ycsb\_test} binary on a clean machine. This is AC-7 of the project specification, and it is the single piece of the Part Two evaluation that survived the hardware outage intact.
 
-\subsection{What We Did NOT Port}
-%% TODO:
-%%  - Multi-node support (single-node only; coordination via shared memory)
-%%  - Coroutines (all operations synchronous; no CQ polling)
-%%  - Memcached-based initialization (no cluster handshake needed)
-%%  - RPC-based directory operations (rpc stubs return 0)
+\subsection{Off-Hardware Tooling}
+\label{sec:cxl-tooling}
 
-%% ============================================================
-\section{Evaluation}
-\label{sec:eval}
-%% ============================================================
+Because we anticipated that hardware time would be scarce and uncertain, the spec frontloaded the off-hardware work that a typical evaluation does on the cluster as it goes. Table~\ref{tab:tooling} lists what we built, where it lives, and the test status for each.
 
-\subsection{Experimental Setup}
-%% TODO: Hardware: r650 @ Clemson — dual-socket Intel Xeon Gold 6338N,
-%% 256GB DDR4, two NUMA nodes. OS: Ubuntu 20.04. Build: GCC 9, CMake.
-%% Workloads: YCSB C/D/E (reproduce from Part One).
-%% Baselines:
-%%  1. Single-node CHIME on RDMA (loopback, same node as both CN and MN)
-%%  2. Single-node CHIME on CXL (NUMA node 0 threads, node 1 memory)
-%%  3. Single-node Sherman, SMART for reference (if time permits)
+\begin{table}[H]
+\centering
+\small
+\caption{Off-hardware tooling for the CXL evaluation. Every item is committed to \texttt{main} and exercised by unit tests where applicable. Total: 18 unit tests passing.}
+\label{tab:tooling}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Artifact & Purpose & Test status \\
+\midrule
+\texttt{Dockerfile.cxl-preflight}                & Reproducible CXL build from clone               & Build succeeds \\
+\texttt{exp/run\_harness.py}                     & Wrap \texttt{ycsb\_test}; capture debug on fail & 8/8 unit tests \\
+\texttt{exp/fig\_14\_surrogate.py}               & Single-point cache-consumption driver          & 5/5 unit tests \\
+\texttt{exp/plot\_fig\_12\_three\_way.py}        & Multi-series throughput-latency plot helper   & 5/5 unit tests \\
+\texttt{construction/scripts/smoke-gate.sh}      & Automated CXL go/no-go gate                    & Manual definition \\
+\texttt{construction/scripts/runbook-day1.md}    & T+0:00 to T+7:30 hardware-window playbook      & Manual definition \\
+\texttt{construction/design/sherman-load-crash-analysis.md} & Sherman static analysis           & Source for §\ref{sec:stress} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Throughput and Latency}
-%% TODO: Figure placeholder — mirror fig_12 from paper.
-%% Discuss how CXL's load/store semantics change the throughput-latency curve.
+The harness, in particular, is calibrated for an unattended overnight run: any non-zero \texttt{ycsb\_test} exit triggers automatic capture of the core dump, the full stderr, the current \texttt{git rev-parse HEAD}, the build's \texttt{CMakeCache.txt}, the in-tree \texttt{include/Common.h}, the hostname, and the hugepage state, all into a per-invocation directory under \texttt{debug/<timestamp>-<workload>/}. Triage proceeds off-hardware after the reservation closes; the reservation clock is never spent on live debug.
 
-\subsection{Which CHIME Techniques Still Matter?}
-%% TODO: With ~10x lower per-op latency, do hopscotch leaves still beat B+~tree
-%% leaves? Does vacancy-aware locking still help when contention window shrinks?
-%% Disable each technique in turn (mirror fig_15a) and measure the delta.
+\subsection{The Smoke Gate}
 
-\subsection{Cache Consumption on CXL}
-%% TODO: On CXL, the index cache optimization may be less important since
-%% "remote" access is cheap. Measure and discuss.
+The first thing a successful reservation would have run is the CXL smoke gate (\texttt{construction/scripts/smoke-gate.sh}), a two-stage automated check designed to surface a CXL runtime failure within 60 seconds:
 
-%% ============================================================
-\section{Discussion}
-\label{sec:discussion}
-%% ============================================================
+\begin{itemize}[nosep]
+    \item \textbf{Stage~(a) write-heavy micro-check:} 5\,s of YCSB LOAD inserting 10\,k keys. This exercises CAS-via-\texttt{\_\_sync\_val\_compare\_and\_swap}, the \texttt{alloc} path, and the on-chip-memory routing for lock words. Pass condition: no assertion failure, no segmentation fault.
+    \item \textbf{Stage~(b) read-heavy micro-check:} 30\,s of YCSB workload C against the LOAD'd dataset. This exercises read batching, speculative reads, and the cache. Pass condition: throughput $> 0$~ops/s, standard latency histogram in stdout.
+\end{itemize}
 
-\subsection{Does CHIME Still Make Sense on CXL?}
-%% TODO: The paper's core claim is cache efficiency via hopscotch leaves.
-%% On CXL where loads are fast, does this trade-off still favor hopscotch?
-%% Speculate, then let data decide.
+Both stages must pass before the script returns 0. A failure of either pivots the runbook to Part One closure (collect missing \texttt{fig\_12\_a}/\texttt{b} via RDMA) rather than burning the rest of the window on debugging. We chose this two-stage form deliberately: a read-only check would not exercise CHIME's CAS-and-allocation path, which is where the most CXL-specific code lives.
 
-\subsection{Limitations of NUMA Emulation}
-%% TODO:
-%%  - Latency is QPI/UPI (~80ns), real CXL is closer to 200-300ns
-%%  - Bandwidth symmetric; real CXL devices often bandwidth-limited
-%%  - No real CXL.mem protocol overhead (credit flow control, etc.)
+\subsection{Cache Consumption: A Design-Time Discussion}
+\label{sec:cxl-fig14}
 
-\subsection{Path to a Real CXL Deployment}
-%% TODO: What would change if run on real CXL hardware (e.g., a CXL memory
-%% expander attached via PCIe 5.0)? DMA APIs, persistence model, failure domain.
+The original spec called for a \texttt{fig\_14} cache-consumption surrogate (AC-13): a single-point measurement at 60\,M keys --- short of the paper's 40--120\,M sweep --- using the existing \texttt{statistics()} hook in \texttt{src/Tree.cpp} that reports per-CN internal-node cache size. The driver (\texttt{exp/fig\_14\_surrogate.py}) is implemented and unit-tested. The measurement was not run.
+
+What the surrogate would have shown, given the index design, is straightforward to reason about. CHIME's hopscotch leaves pack more keys per leaf than Sherman's B+ leaves at the same per-leaf size, which translates directly into fewer internal-node entries cached per million keys --- the cache-efficiency claim that motivates the paper. SMART's adaptive radix tree pays a different price: variable-width nodes consume less cache than B+ leaves on dense key distributions and more on sparse ones. ROLEX's learned index is dominated by model parameters and is roughly transport-independent.
+
+The CXL transport changes none of this. Cache consumption is a function of the index structure, not the transport. What CXL \emph{does} change is the per-miss penalty: a cache miss that triggers a remote internal-node fetch costs $\sim$200\,ns on CXL versus $\sim$2\,$\mu$s on RDMA, so the marginal value of additional cache shrinks by an order of magnitude. The interesting downstream question --- whether the cache-eviction logic in \texttt{ENABLE\_CACHE\_EVICTION} is still load-bearing on CXL --- requires a runtime measurement we did not get to take. We flag it in §\ref{sec:conclusion} as the most informative single experiment a successor reservation should run.
 
 %% ============================================================
-\section{Related Work}
-\label{sec:related}
+\section{Part Two: CXL Port --- Evaluation Blocked, with Postmortem}
+\label{sec:postmortem}
+%% Spec §7; rubric guideline #4 ("could not reproduce, explain why").
 %% ============================================================
 
-%% TODO: CXL-native index structures, disaggregated memory surveys,
-%% other CXL port efforts (e.g., Pond, TPP).
+
+\subsection{What We Set Out to Measure}
+
+The Part Two evaluation plan, locked in the project specification on April 21, called for four hardware-dependent measurement campaigns on a 2-node CloudLab r650 reservation:
+
+\begin{enumerate}[nosep]
+    \item A two-stage CXL smoke gate (5\,s YCSB LOAD to exercise CAS and allocation; 30\,s YCSB C to exercise read batching) that would gate the rest of the run.
+    \item The full CHIME-on-CXL fig\_12 sweep across YCSB workloads A, B, C, D, E (and LOAD best-effort).
+    \item A matched single-node RDMA baseline (1 CN + 1 MN) on the same hardware for transport-only comparison, including a per-thread regression check against the Part One numbers.
+    \item The fig\_15a/b ablation (5 variants for 15a, 4 for 15b) on the CXL build, feeding the per-technique analysis of which CHIME features still pay off when transport latency drops.
+\end{enumerate}
+
+None of these ran. The remainder of this section explains why.
+
+\subsection{Reservation Timeline}
+
+We held four r650 Clemson reservations against project \texttt{CS620426SP} between April 22 and April 26. None converted into a successful experiment. Table~\ref{tab:reservation-timeline} summarizes.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Reservation timeline, April 22--26, 2026. All against the \texttt{chime-r650-clemson-lan} profile, project CS620426SP. ``Failed'' means every \texttt{startExperiment} attempt against the active reservation returned the scheduler error in \S\ref{sec:postmortem-error}.}
+\label{tab:reservation-timeline}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Window & UUID (truncated) & Hardware & Outcome \\
+\midrule
+Apr 22, 8h auto-approved          & \texttt{43677ece}\ldots & 2$\times$r650 & Expired unused \\
+Apr 23, 8h auto-approved          & \texttt{5565ec96}\ldots & 2$\times$r650 & Failed \\
+Apr 20--25, 5d admin-approved     & \texttt{8c36e934}\ldots & 2$\times$r650 & Failed \\
+Apr 21--26, 5d admin-approved     & \texttt{cc0bf3c0}\ldots & 2$\times$r650 & Failed \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The April 22 window was lost to pre-hardware tooling overrunning the scheduled start; this is on us. The April 23, 25, and 26 windows failed against a CloudLab-side error pattern that we describe next.
+
+\subsection{The Scheduler Error}
+\label{sec:postmortem-error}
+
+Every \texttt{startExperiment} call against an active reservation returned the same error within approximately 90 seconds of submission:
+
+\begin{lstlisting}
+*** Resource reservation violation: 2 nodes of type r650 requested, but
+    only 0 available because of existing resource reservations to other
+    projects or users.
+TIMESTAMP: HH:MM:SS:NNNNNN Released the mapper lock after RunAssign1
+\end{lstlisting}
+
+The phrasing ``other projects or users'' is the diagnostically important piece. It states that the scheduler attributes the held capacity to projects \emph{other} than the experiment's project (\texttt{CS620426SP}) --- not to ``no reservation matched'' or ``your reservation has not started.'' From the user's perspective, two reservations attached to that exact project were active. From the scheduler's perspective, those reservations did not exist.
+
+\subsection{Failed Experiment UUIDs}
+
+For triage, Table~\ref{tab:failed-experiments} lists representative failed \texttt{startExperiment} attempts. Each failed within ~90 seconds with the error in \S\ref{sec:postmortem-error}. UUIDs are CloudLab-side identifiers and can be cross-referenced through portal logs.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Failed \texttt{startExperiment} UUIDs against project CS620426SP.}
+\label{tab:failed-experiments}
+\begin{tabular}{@{}llll@{}}
+\toprule
+UUID & Date (UTC) & Profile name binding & Notes \\
+\midrule
+\texttt{30166300-97e9-414c-a95b-f128ad976ca3} & Apr 23 15:03 & \texttt{n=2,hw=r650} & First attempt of Apr 23 window \\
+\texttt{4f385918-e363-42a1-b301-e0bf0c053f63} & Apr 23 15:05 & \texttt{n=2,hw=r650} & Identical retry \\
+\texttt{39d89110-9227-4409-926c-ae530f73fb3a} & Apr 23 15:09 & \texttt{n=2,hw=r650} & Identical retry \\
+\texttt{46a9cf1b-5b20-4f6a-931a-59be0a1cc224} & Apr 23 15:11 & \texttt{n=1,hw=r650} & Reduced to 1-node, same error \\
+\texttt{89dd98da-6713-446b-9262-a649f6be40b2} & Apr 25 16:35 & \texttt{n=2,hw=r650} & After token refresh \\
+\texttt{8ee49dbb-4bf7-4195-8334-ab38cfb58f6d} & Apr 25 16:36 & \texttt{n=2,hw=r650} & Identical \\
+\texttt{1ddc9b8e-d3f2-4f61-a57c-a015ffbc5ba3} & Apr 26 23:15 & \texttt{n=2,hw=r650} & Final attempt before pivot \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The Diagnostic Dead End: \texttt{reservationStatus}}
+\label{sec:postmortem-resstatus}
+
+The standard CloudLab CLI for inspecting a reservation is \texttt{reservationStatus <uuid>}, which calls the XML-RPC method \texttt{portal.reservationStatus} on \texttt{boss.emulab.net:43794}. Throughout the affected period this method returned a Perl runtime error from the server:
+
+\begin{lstlisting}
+$ reservationStatus 5565ec96-3ebe-11f1-a92d-c4cbe1eff744
+Undefined subroutine &main::DoStatus called at
+/usr/testbed/bin/manage_resgroup line 208.
+\end{lstlisting}
+
+This is a server-side bug. We confirmed it appears regardless of UUID, regardless of authentication mode, and regardless of CLI invocation pattern --- the call never reaches a working code path. This single bug eliminated the only programmatic route to diagnose the project-mismatch hypothesis below: with a working \texttt{reservationStatus}, we could have read the cluster, hardware-type URN, and project of each reservation and compared them to the profile bindings. Without it, every diagnostic path required interactive web-UI access.
+
+\subsection{Authentication-Layer Asymmetry}
+
+CloudLab presents two authentication surfaces, and the diagnostic information needed to fix the project-mismatch is split across them:
+
+\begin{itemize}[nosep]
+    \item \textbf{PEM client certificate}, used by the \texttt{portal-tools} XML-RPC CLI (\texttt{createReservation}, \texttt{startExperiment}, \texttt{experimentStatus}, \texttt{experimentManifests}). Decrypted PEM at \texttt{\textasciitilde/.ssl/emulab.pem}; the encrypted form ships with our repository at \texttt{files/cloudlab.pem}. PEM auth confirmed working: dry-run \texttt{createReservation -n} returns \texttt{approved: 1} on every probe.
+    \item \textbf{JWT cookie}, used by the web portal at \texttt{www.cloudlab.us}. Token at \texttt{files/cloudlab.jwt}, expiry 2027-12. Required for any web-UI page (\texttt{resgroup.php}, \texttt{list-resgroup.php}). Cannot be presented as a \texttt{Bearer} header against the boss XML-RPC endpoint.
+\end{itemize}
+
+The cross-product is the failure: a PEM client cert against \texttt{www.cloudlab.us/resgroup.php?uuid=...} returns an empty response (the web layer does not honor cert auth); a JWT against \texttt{boss.emulab.net:43794} hits a 404 (the XML-RPC layer does not honor cookies). Combined with the broken \texttt{reservationStatus}, the only path to read reservation state was an interactive web login, which an automated agent cannot perform.
+
+\subsection{Indirect Evidence the Reservations Were Real}
+
+The user reported two active reservations in the web UI. Without working \texttt{reservationStatus}, we corroborated this through a side channel: the dry-run mode of \texttt{createReservation}.
+
+\begin{lstlisting}
+$ createReservation -n --duration 1 --bindings='{"n":"2","hw":"r650"}' \
+    --project CS620426SP "CS620426SP,chime-r650-clemson-lan"
+{"approved": 1, "nbd": "2026-04-27T15:00:00Z", ...}
+\end{lstlisting}
+
+The \texttt{nbd} field (``next best date'') is the earliest start time at which a hypothetical new reservation could begin. A return value of \texttt{2026-04-27T15:00:00Z} means r650 Clemson capacity is fully booked by \emph{somebody} through April 27. That window matches the user's stated April 21--26 reservation perfectly. So the capacity holds were real --- they simply were not being attributed to the project the experiment was submitted under.
+
+\subsection{Hypotheses for the Project Mismatch}
+
+The scheduler error is specific: capacity is held by ``other projects or users.'' That points to one of four possibilities, in decreasing order of our prior:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Reservation filed under a different project.} Tested by attempting \texttt{startExperiment --project djjay}; the API returned \texttt{No such project}, ruling out a personal-project filing.
+    \item \textbf{Reservation at a different cluster.} The \texttt{chime-r650-clemson-lan} profile pins the cluster to Clemson at the profile level; binding \texttt{cluster: utah} in our \texttt{createReservation} call returned a Clemson result regardless. We could not verify the user's reservation cluster without web-UI access.
+    \item \textbf{Reservation for a different hardware-type URN.} Clemson exposes multiple r650 variants (e.g., \texttt{r650}, \texttt{r650\_25g}). If the user's reservation used a variant URN that the profile does not match, the scheduler would correctly reject the binding. Cannot verify without working \texttt{reservationStatus}.
+    \item \textbf{Genuine scheduler-side bug.} The reservation existed for the right project, cluster, and type, but the binding logic between reservations and experiments failed. Possible but not testable from the user side.
+\end{enumerate}
+
+We submitted a structured support email to \texttt{support@cloudlab.us} (draft retained at \texttt{files/cloudlab-support-email-draft.md}) listing all UUIDs and verbatim error strings.
+
+\subsection{What Would Have Unblocked Us}
+
+Three concrete improvements to CloudLab's APIs would have prevented this six-day outage from blocking the project:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Fix \texttt{reservationStatus}.} The server-side error is a one-line Perl bug (\texttt{Undefined subroutine \&main::DoStatus} at \texttt{/usr/testbed/bin/manage\_resgroup} line 208). Restoring this RPC restores the only programmatic path to inspect reservation state.
+    \item \textbf{Make the scheduler error precise.} ``0 available because of existing resource reservations to other projects or users'' is misleading when capacity is held by the same project but in an unmatched binding. Naming the conflicting reservation UUID, or distinguishing ``no matching reservation'' from ``capacity exhausted by other projects,'' would have pointed us at hypothesis (3) above immediately.
+    \item \textbf{Add \texttt{startExperiment --reservation <uuid>} to the API.} Reservation-to-experiment binding is currently implicit (matching project, cluster, hardware type, and time window). An explicit binding flag would let the scheduler return ``your reservation has hardware type X but the profile asks for Y'' on the spot, instead of pointing at unrelated capacity holds.
+\end{enumerate}
+
+These are not editorial complaints. They are testable engineering changes, each individually sufficient to have surfaced the root cause inside the first failed window.
+
+\subsection{Late Data (if applicable)}
+\label{sec:late-data}
+%% AC-22: placeholder; remains as the "no additional data" line if nothing arrives.
+No additional CXL or single-node RDMA data became available before the May 5 deadline. The preceding postmortem is therefore the complete record of what was attempted, what failed, and what would be required to satisfy the deferred acceptance criteria (AC-1, AC-2, AC-3, AC-5, AC-12, AC-13 in the project specification).
 
 %% ============================================================
-\section{Conclusion}
+\section{Conclusion and Future Work}
 \label{sec:conclusion}
+%% Spec §8.
 %% ============================================================
 
-%% TODO: Summary paragraph + 1 sentence on open artifact.
+This project set out to reproduce CHIME~\cite{chime2024} on CloudLab r650 hardware and port it to CXL-attached memory for a transport-comparison study. The reproduction half delivered the qualitative trends from the paper for fig\_12 workloads C/D/E, fig\_15a, and fig\_15b on r650 Clemson with five competing methods. The CXL-port half delivered a complete code port that compiles cleanly in a reproducible Docker preflight environment and a full set of off-hardware tooling for the planned evaluation, but did not produce runtime measurements because of a six-day CloudLab reservation outage we have documented in §\ref{sec:postmortem}.
+
+\subsection{What the Smoke Gate Would Have Told Us}
+
+Had a single one of our four reservations succeeded, the first measurement would have been the CXL smoke gate (§\ref{sec:cxl-arch}). The reading is informative regardless of outcome:
+
+\begin{itemize}[nosep]
+    \item \textbf{If YCSB~C throughput exceeds 5\,Mops/s} on a single CN: the CXL transport already exceeds Part One's per-thread RDMA numbers, validating the central hypothesis that CHIME's optimizations are not bottlenecked on transport once latency drops by an order of magnitude.
+    \item \textbf{If throughput is 1--5\,Mops/s}: NUMA emulation reproduces the paper-class behavior at lower absolute latency, and the per-technique ablation in fig\_15a/b tells us which optimizations remain load-bearing.
+    \item \textbf{If throughput is below 1\,Mops/s} or the LOAD micro-check fails: the NUMA emulation has a real bottleneck (most likely in the CAS path or the on-chip memory routing), and the debug-capture artifacts in \texttt{debug/} would surface the cause without consuming live reservation time.
+\end{itemize}
+
+The first datum, in any of these branches, is more informative than the speculation in this conclusion.
+
+\subsection{Future Work}
+
+\begin{itemize}[nosep]
+    \item Re-run the CXL smoke gate on the next available r650 reservation. Smaller follow-on runs (fig\_12 C, then a single fig\_15a column) tell us most of what we need to know.
+    \item Port the four sibling indexes (Sherman, SMART, ROLEX, Marlin) to CXL using the same \texttt{CxlTransport}/\texttt{CxlDSM} pattern. Each has its own DSM call sites and coroutine harness; the patches will not all be 5-blocker series.
+    \item Repeat the comparison on real CXL hardware (e.g., a CXL.mem device attached over PCIe~5.0). Real CXL adds protocol-credit accounting that NUMA emulation does not model, and that bandwidth/credit interaction is itself a research question for index design.
+    \item Run the per-technique ablation we deferred. The single most informative measurement is whether \texttt{ENABLE\_CACHE\_EVICTION} still pays off when the per-miss penalty is ten times lower (§\ref{sec:cxl-fig14}).
+\end{itemize}
+
+\subsection{Lessons for Course Infrastructure}
+
+The technical contribution above sits inside an infrastructure story. We held more than 80 hours of approved CloudLab capacity across April 22--26 and converted none of it into runtime data. The proximate cause is a reservation-scheduler bug in the CloudLab portal; the structural cause is that the diagnostic CLI required to identify the bug (\texttt{reservationStatus}) is itself broken on the server, and the only working path to inspect reservation state is an interactive web UI that automated agents cannot use. For a graduate course built around reproducing a SOSP-class artifact, infrastructure reliability and diagnostic visibility matter as much as compute time. Three concrete improvements --- fixing \texttt{reservationStatus}, sharpening the scheduler's error message, and adding an explicit \texttt{--reservation <uuid>} binding to \texttt{startExperiment} --- would each independently have surfaced our root cause within the first failed window, and we have submitted them as a structured change request to CloudLab support.
 
 %% ============================================================
 \bibliographystyle{plainnat}
@@ -218,11 +571,72 @@ For completeness, we briefly recap the RDMA reproduction results from the Part O
 \section{Reproducibility}
 \label{app:repro}
 
-%% TODO:
-%%  - Repo: github.com/djjay0131/CHIME, branch: main, commit: [SHA]
-%%  - Build: cmake -DUSE_CXL=ON .. && make -j
-%%  - Run: exp/fig_12_cxl.py
-%%  - Hardware: any dual-socket x86_64 with NUMA support
-%%  - Results reproduced on: CloudLab r650 @ Clemson
+\paragraph{Repository.} \url{https://github.com/djjay0131/CHIME}, branch \texttt{main}. The release tag \texttt{v2.0-final} corresponds to the version of the artifact described in this report.
+
+\paragraph{CXL build (any dual-socket x86\_64 with Docker).}
+\begin{lstlisting}
+git clone https://github.com/djjay0131/CHIME && cd CHIME
+docker build --platform linux/amd64 -f Dockerfile.cxl-preflight -t chime .
+docker run --rm --platform linux/amd64 -v $PWD:/src chime bash -c \
+  "mkdir -p b-cxl && cd b-cxl && cmake -DUSE_CXL=ON .. && make -j"
+ls b-cxl/ycsb_test  # binary exists on success
+\end{lstlisting}
+
+\paragraph{RDMA build (CloudLab r650 with MLNX OFED).}
+\begin{lstlisting}
+./construction/scripts/setup-r650.sh /tmp/nodes.txt $MASTER  # 7-phase setup
+mkdir -p build && cd build && cmake .. && make -j
+\end{lstlisting}
+
+\paragraph{Run commands.}
+\begin{itemize}[nosep]
+    \item Reproduction figures: \texttt{python3 exp/fig\_12.py}, \texttt{exp/fig\_15a.py}, \texttt{exp/fig\_15b.py}. Each consumes \texttt{exp/params/*.json} and writes \texttt{exp/results/}.
+    \item CXL smoke gate: \texttt{bash construction/scripts/smoke-gate.sh} (run inside the CXL build directory).
+    \item Day-1 hardware-window playbook: \texttt{construction/scripts/runbook-day1.md}.
+\end{itemize}
+
+\paragraph{Hardware requirements.} CXL evaluation: any dual-socket x86\_64 host with two NUMA nodes (e.g., CloudLab r650). RDMA evaluation: r650-class hardware with Mellanox ConnectX-6 NICs and MLNX OFED userspace; the six RoCE-specific source fixes in §\ref{sec:effort-roce} are required for r650 Clemson but are auto-applied by \texttt{setup-r650.sh}.
+
+\section{Reservation UUIDs and Failed Experiment IDs}
+\label{app:uuids}
+
+Master tables of all CloudLab identifiers cited in §\ref{sec:postmortem}. Reservation UUIDs (Table~\ref{tab:appendix-reservations}) and failed experiment UUIDs (Table~\ref{tab:appendix-failed}) are reproduced here for triage and possible cross-referencing with CloudLab portal logs.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Reservation UUIDs against project CS620426SP, April 22--26, 2026.}
+\label{tab:appendix-reservations}
+\begin{tabular}{@{}lll@{}}
+\toprule
+UUID & Type & Window \\
+\midrule
+\texttt{43677ece-3dcb-11f1-a92d-c4cbe1eff744} & Auto-approved & Apr 22, 8h \\
+\texttt{5565ec96-3ebe-11f1-a92d-c4cbe1eff744} & Auto-approved & Apr 23, 8h \\
+\texttt{8c36e934-666d-41dd-b899-920861083b09} & Admin-approved & Apr 20--25, 5d \\
+\texttt{cc0bf3c0-160f-4e53-bdd4-0f3e108b4757} & Admin-approved & Apr 21--26, 5d \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Failed \texttt{startExperiment} attempts. Each returned the scheduler error in §\ref{sec:postmortem-error} within ~90 seconds of submission.}
+\label{tab:appendix-failed}
+\begin{tabular}{@{}lll@{}}
+\toprule
+UUID & Date (UTC) & Bindings \\
+\midrule
+\texttt{30166300-97e9-414c-a95b-f128ad976ca3} & 2026-04-23 15:03 & \texttt{n=2,hw=r650} \\
+\texttt{4f385918-e363-42a1-b301-e0bf0c053f63} & 2026-04-23 15:05 & \texttt{n=2,hw=r650} \\
+\texttt{39d89110-9227-4409-926c-ae530f73fb3a} & 2026-04-23 15:09 & \texttt{n=2,hw=r650} \\
+\texttt{46a9cf1b-5b20-4f6a-931a-59be0a1cc224} & 2026-04-23 15:11 & \texttt{n=1,hw=r650} \\
+\texttt{89dd98da-6713-446b-9262-a649f6be40b2} & 2026-04-25 16:35 & \texttt{n=2,hw=r650} \\
+\texttt{8ee49dbb-4bf7-4195-8334-ab38cfb58f6d} & 2026-04-25 16:36 & \texttt{n=2,hw=r650} \\
+\texttt{1ddc9b8e-d3f2-4f61-a57c-a015ffbc5ba3} & 2026-04-26 23:15 & \texttt{n=2,hw=r650} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \end{document}

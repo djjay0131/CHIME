@@ -111,8 +111,8 @@ You should run the following steps on **all** nodes.
 If you want to understand the code rather than only reproduce the artifact, start here:
 
 - `construction/design/codebase-guide.md`: high-level code map, build model, runtime layers, and an end-to-end walkthrough of `exp/fig_03a.py`
-- `memory-bank/systemPatterns.md`: compact summary of how compile-time flags, benchmark executables, and Python orchestration fit together
-- `memory-bank/activeContext.md`: current documentation focus and next steps
+- `llm/memory_bank/systemPatterns.md`: compact summary of how compile-time flags, benchmark executables, and Python orchestration fit together
+- `llm/memory_bank/activeContext.md`: current documentation focus and next steps
 
 Useful mental model:
 

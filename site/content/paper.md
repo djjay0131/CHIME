@@ -1,24 +1,33 @@
 ---
 title: "Research Report"
-subtitle: "Reproducing CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory"
+subtitle: "Reproducing CHIME and Attempting a CXL Port"
 ---
 
 CS 6204 Advanced Topics in Systems — Virginia Tech, Spring 2026.
 
-**Download:** <a href="/CHIME/pdfs/Jason_Cusati_Project_Part_One.pdf">Jason_Cusati_Project_Part_One.pdf</a>
+## Final Report (May 6 deliverable)
 
-{{< pdf "/pdfs/Jason_Cusati_Project_Part_One.pdf" >}}
+**Download:** <a href="/CHIME/pdfs/Jason_Cusati_Project_Final_Report.pdf">Jason_Cusati_Project_Final_Report.pdf</a>
+
+{{< pdf "/pdfs/Jason_Cusati_Project_Final_Report.pdf" >}}
+
+The combined Part One + Part Two report covers reproduction of CHIME's RDMA-based throughput-latency and ablation results, an attempted port to CXL-attached memory, a Sherman LOAD-crash stress-testing finding, and a structured infrastructure postmortem of the CloudLab reservation outage that prevented runtime evaluation of the CXL port.
+
+Eight sections following the instructor's six rubric guidelines:
+
+1. Introduction and Project Scope
+2. Experimental Setup: Paper vs. Actual
+3. Engineering Effort and Obstacles
+4. Part One: Reproduction Results
+5. Part One: Stress-Testing Findings
+6. Part Two: CXL Port — Engineering Completed
+7. Part Two: CXL Port — Evaluation Blocked, with Postmortem
+8. Conclusion and Future Work
 
 ---
 
-## Report Summary
+## Part One Progress Report (March 26 milestone)
 
-This progress report documents our effort to reproduce experiments from the CHIME paper (SOSP '24) on CloudLab infrastructure. It covers:
+**Download:** <a href="/CHIME/pdfs/Jason_Cusati_Project_Part_One.pdf">Jason_Cusati_Project_Part_One.pdf</a>
 
-1. **Experiments planned** — Figures 12, 14, 15a, 15b from the paper, plus three additional sensitivity studies
-2. **CloudLab reservation challenges** — r650 unavailability pre-deadline, alternative r6525 attempt
-3. **r6525 hardware experience** — 11 issues diagnosed across RDMA device selection, RoCE compatibility, disk space, Paramiko SSH, and memcached coordination
-4. **r650 run plan** — Automated setup for March 27–April 3, with pre-generated workloads on NFS
-5. **Part Two direction** — Porting CHIME to CXL-based disaggregated memory
-
-*Full experimental results will be added after the r650 run (March 27–April 3).*
+The earlier progress report documenting the planned experiments, CloudLab reservation challenges, the r6525 dry-run experience, and the r650 run plan. Preserved for history; superseded by the combined final report above.

@@ -27,11 +27,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build report PDF
+      - name: Build Part One report PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
           working_directory: report
+
+      - name: Build final combined report PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main-partwo.tex
+          working_directory: report
+          latexmk_use_xelatex: false
 
       - name: Build presentation diagrams
         uses: xu-cheng/latex-action@v3
@@ -41,18 +48,31 @@ jobs:
           working_directory: presentation/diagrams
           latexmk_use_lualatex: true
 
-      - name: Build presentation PDF
+      - name: Build progress (v2) presentation PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main-v2.tex
           working_directory: presentation
 
+      - name: Build final presentation PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          working_directory: presentation
+
       - name: Copy PDFs into Hugo static dir
         run: |
           mkdir -p site/static/pdfs
+          # Part One progress report (history)
           cp report/main.pdf site/static/pdfs/Jason_Cusati_Project_Part_One.pdf
           cp report/main.pdf site/static/pdfs/report.pdf
+          # Final combined report (May 6 deliverable)
+          cp report/main-partwo.pdf site/static/pdfs/Jason_Cusati_Project_Final_Report.pdf
+          cp report/main-partwo.pdf site/static/pdfs/final-report.pdf
+          # Progress presentation (Apr 9, history)
           cp presentation/main-v2.pdf site/static/pdfs/presentation.pdf
+          # Final presentation (May 5 deliverable)
+          cp presentation/main.pdf site/static/pdfs/final-presentation.pdf
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3

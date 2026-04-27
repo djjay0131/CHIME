@@ -15,27 +15,37 @@ Existing disaggregated-memory range indexes face a trade-off between cache consu
 
 ## Scope
 
-### In Scope — Part One (due Mar 26)
-- Reproduce RDMA experiments on CloudLab (Clemson cluster)
-- Full 5-method comparison: CHIME, Sherman, SMART, ROLEX, Marlin
+### In Scope — Part One (due Mar 26, presentation Apr 7-9)
+- Reproduce RDMA experiments on CloudLab (Clemson r650 cluster)
+- Full 5-method comparison: CHIME, Sherman, SMART, ROLEX, SMART-SC
 - Core figures: 12, 14, 15a, 15b; stretch: 3a
 - Extra experiments: cache sensitivity, value size scaling, distribution comparison
 - LaTeX report with GitHub Pages CI
 - 15-20 min Beamer presentation (Apr 7-9)
 
 ### In Scope — Part Two (due May 5)
-- Port CHIME from RDMA to CXL-based hardware
-- Comparative experiments (RDMA vs CXL)
+- Port CHIME from RDMA to CXL-based transport
+- NUMA-emulated CXL on r650 dual-socket (not QEMU, not real CXL hardware)
+- CxlTransport/CxlDSM drop-in replacement for DSM via `USE_CXL` compile flag
+- Comparative experiments (RDMA vs CXL) on r650
+- CHIME-on-CXL only (sibling-method CXL ports deferred — see scope below)
 - Final presentation and report
+- Spec: `llm/features/final-project.md` (14 ACs)
+
+### Deferred / Out of Scope for Part Two
+- Sibling-method CXL ports (SMART, ROLEX, Marlin) — full CxlTransport/CxlDSM port required, not 5-fix patches
+- Sherman LOAD crash fix — framed as Sherman baseline limitation in the report
 
 ### Out of Scope
 - Modifying CHIME's core algorithm
+- Real CXL hardware (emulated via NUMA)
 - Supporting hardware beyond CloudLab r650/r6525
 
 ## Key Constraints
 
 - CloudLab r650 is the target hardware (paper-matched); r6525 used for pre-deadline runs
-- Paper requires 10 CN + 1 MN (11 nodes total)
-- Experiments are long-running (fig_12 ~7.5h) and require RDMA
+- Paper requires 10 CN + 1 MN (11 nodes total); actual runs used 5 CN (run7) and 3 CN (run8) — 10 CN not achievable due to CloudLab availability
+- Experiments are long-running (fig_12 ~7.5h) and require RDMA over internal LAN (not control net)
 - Sibling repos (SMART, ROLEX) must coexist at same directory level
 - PhD student expectations per syllabus (higher bar than MS)
+- **CloudLab scheduler reliability**: three reservation windows lost between Apr 22–26 to a "0 available" scheduler bug despite approved reservations holding nodes. Tooling is fully ready off-hardware; only data collection is blocked.
