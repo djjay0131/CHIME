@@ -11,3 +11,12 @@ Build: SUCCESS (ycsb_test 365896 bytes)
 memcached on 10.10.1.1:11211 reachable from node1
 Runtime: ycsb_test CN-side segfault on startup, no stdout produced
 Hypothesis: recent CXL-port commits may have introduced RDMA-path regression
+
+=== Hypothesis disproven (Apr 27 16:34) ===
+Built original first-commit code (8b3e73e) with only RoCE fixes applied.
+2-node smoke test: CN-side crash with same pattern (no stdout, core dumped).
+This RULES OUT the recent CXL-port commits as the cause of the RDMA crash.
+The RDMA-path crash is environmental — most likely related to MLNX OFED 4.9
+userspace-only installation (no kernel modules) on Ubuntu 20.04 with
+ConnectX-6 Dx. Run 7/8 (April 5-7) used full MLNX OFED with kernel modules
+on (likely) ConnectX-6 (not Dx) — that environment matters for ibv_exp_dct.

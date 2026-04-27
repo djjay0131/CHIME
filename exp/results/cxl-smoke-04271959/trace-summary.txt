@@ -1,0 +1,31 @@
+Instrumented binary trace (build-cxl-trace):
+  [trace] after parse_args
+  [trace] before DSM::getInstance
+  [trace] cxldsm: before per-thread bufs
+  [trace] cxldsm: after per-thread bufs   <- 65 thread bufs allocated successfully
+  [trace] after DSM::getInstance          <- CxlDSM constructor returned cleanly
+  [trace] before new Tree
+  [trace] after new Tree                  <- Tree constructor returned cleanly
+  [trace] before barrier
+  [trace] after barrier                   <- single-node barrier passed (machine_nr=1)
+  [trace] spawning thread 0
+  <segfault, no further output>           <- crash happens INSIDE worker thread
+
+Conclusion: crash is in worker thread, in path:
+  thread_run -> thread_load -> tree->insert -> hopscotch_split_and_unlock ->
+  insert_internal -> internal_node_search -> dsm->read_sync -> memcpy
+
+PC at crash is in libc range, consistent with memcpy on a bad source pointer.
+resolve(GlobalAddress) returns base_addr_ + gaddr.offset; either base_addr_
+is OK (other reads work) or gaddr.offset is out-of-pool.
+
+Hypothesis-narrowing experiments performed during this reservation:
+- ENABLE_CACHE=OFF: same crash (rules out internal-node cache corruption)
+- use_hugepages=false: same crash after 64GB zero-fill (rules out hugepage path)
+- kThreadCount=1, kCoroCnt=1: same crash (rules out concurrency)
+
+Remaining suspects (off-hardware bisection):
+- Tree level convention inconsistency: root_entry.level vs node.metadata.level
+- GlobalAddress bit-packing (commit 152b4e9 #3 noted addr_from_ror was incorrect;
+  other call sites may have similar issues)
+- read_sync transInternalSize > leaf size when level=1 root is read as internal

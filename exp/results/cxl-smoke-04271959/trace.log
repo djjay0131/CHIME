@@ -1,0 +1,10 @@
+[trace] after parse_args
+[trace] before DSM::getInstance
+[trace] cxldsm: before per-thread bufs
+[trace] cxldsm: after per-thread bufs
+[trace] after DSM::getInstance
+[trace] before new Tree
+[trace] after new Tree
+[trace] before barrier
+[trace] after barrier
+[trace] spawning thread 0
