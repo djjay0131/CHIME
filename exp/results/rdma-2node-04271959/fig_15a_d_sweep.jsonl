@@ -1,0 +1,5 @@
+{"variant":"build-15a-hopscotch","workload":"d","threads":32,"peak_mops":3.7585,"err":""}
+{"variant":"build-15a-+vacancy","workload":"d","threads":32,"peak_mops":3.7533,"err":""}
+{"variant":"build-15a-+metadata","workload":"d","threads":32,"peak_mops":4.1567,"err":""}
+{"variant":"build-15a-+sibling","workload":"d","threads":32,"peak_mops":4.1327,"err":""}
+{"variant":"build-15a-chime","workload":"d","threads":32,"peak_mops":3.8934,"err":""}
