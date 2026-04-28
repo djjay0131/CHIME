@@ -1,6 +1,6 @@
 # Feature: Final Project Delivery — No-Hardware Pivot
 
-**Status:** IN-PROGRESS (report draft complete; presentation, CI, release tag pending)
+**Status:** IMPLEMENTED (AC-12 unblocked by Apr 27 reservation) (all ACs except AC-11 satisfied; tag stays unpushed until May 5)
 **Date:** 2026-04-27
 **Author:** Feature Architect (AI-assisted)
 **Parent spec:** `llm/features/final-project.md` (this is an amendment — read the parent for unchanged design rationale)

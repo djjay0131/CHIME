@@ -606,6 +606,15 @@ The 16-thread point ($\dagger$) is bimodal across repetitions: two of three runs
 
 The curve is qualitatively consistent with read-only YCSB workloads on disaggregated indexes: super-linear scaling from 4 to 16 threads as the L3 cache and on-NIC queue depth become the bound (CHIME's hotspot buffer at 4.99\,MB and tree cache at 11.07\,MB both reach steady state in this range), then a plateau above 16 threads where the single-CN MN connection becomes the bottleneck. The 32-thread dip is reproducible and consistent with NUMA-domain crossing for a portion of the lock and metadata buffers; 64 threads recovers because every other thread is on the matching socket as the NIC.
 
+\paragraph{AC-12 satisfied: RDMA per-thread regression check.} Comparing our 1\,CN at 64 threads against Part~One's 5\,CN run at 64 threads/CN (the closest matching configuration we have):
+
+\begin{itemize}[nosep]
+    \item Part~One CHIME peak (5\,CN, 64 threads/CN, YCSB~C): 33.96\,Mops/s total $\Rightarrow$ 0.106\,Mops per thread
+    \item Apr~27 CHIME (1\,CN, 64 threads, YCSB~C): 5.36\,Mops/s $\Rightarrow$ 0.0838\,Mops per thread
+\end{itemize}
+
+The per-thread ratio is $0.0838 / 0.106 = 0.79$, well within the $2\times$ regression window specified in AC-12. The 21\% per-thread reduction is consistent with: (a)~the absence of inter-CN parallelism that Part~One could exploit for read replication, and (b)~the conservative \texttt{MAX\_ATOMIC\_ARG=8} setting we use for ConnectX-6~Dx compatibility (down from Part~One's 32). The recent CXL-port commits and the Dx-specific patches did not introduce a silent RDMA regression.
+
 \paragraph{fig\_15a per-technique ablation on YCSB~C.} We re-built CHIME with each of its five techniques toggled off in succession, starting from a Sherman-equivalent configuration (all CHIME features OFF) and adding one technique per variant. Table~\ref{tab:fig15a-c} reports peak throughput on YCSB~C at 16 threads.
 
 \begin{table}[H]
