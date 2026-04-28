@@ -1,0 +1,198 @@
+kNodeCount 2, kThreadCount 8, kCoroCnt 1
+ycsb_load: /proj/cs620426sp-PG0/ycsb_workloads/load_randint_workloadc
+ycsb_trans: /proj/cs620426sp-PG0/ycsb_workloads/txn_randint_workloadc
+[4mshared memory size: 64GB, 0x7f308e400000[0m
+[4mrdma cache size: 4GB[0m
+[4mMachine NR: 2[0m
+[4mCompute server 1 start up [254.85.0.0]
+[0m
+I connect server 0
+I am 10
+I am loader 10
+I am 12
+I am loader 12
+I am 13
+I am loader 13
+I am 11
+I am loader 11
+I am 14
+I am loader 14
+I am 15
+I am loader 15
+I am 9
+I am loader 9
+I am 8
+I am loader 8
+[INFO] new root level 4
+thread 14: 100000 load entries loaded.
+thread 11: 100000 load entries loaded.
+thread 15: 100000 load entries loaded.
+thread 12: 100000 load entries loaded.
+thread 10: 100000 load entries loaded.
+thread 13: 100000 load entries loaded.
+thread 8: 100000 load entries loaded.
+thread 9: 100000 load entries loaded.
+thread 14: 200000 load entries loaded.
+thread 12: 200000 load entries loaded.
+thread 11: 200000 load entries loaded.
+thread 10: 200000 load entries loaded.
+thread 15: 200000 load entries loaded.
+thread 13: 200000 load entries loaded.
+thread 8: 200000 load entries loaded.
+thread 9: 200000 load entries loaded.
+thread 14: 300000 load entries loaded.
+thread 11: 300000 load entries loaded.
+thread 12: 300000 load entries loaded.
+thread 10: 300000 load entries loaded.
+thread 13: 300000 load entries loaded.
+thread 15: 300000 load entries loaded.
+thread 8: 300000 load entries loaded.
+thread 9: 300000 load entries loaded.
+thread 14: 400000 load entries loaded.
+thread 11: 400000 load entries loaded.
+thread 12: 400000 load entries loaded.
+thread 10: 400000 load entries loaded.
+thread 13: 400000 load entries loaded.
+thread 9: 400000 load entries loaded.
+thread 15: 400000 load entries loaded.
+thread 8: 400000 load entries loaded.
+thread 14: 500000 load entries loaded.
+thread 11: 500000 load entries loaded.
+thread 12: 500000 load entries loaded.
+thread 9: 500000 load entries loaded.
+thread 13: 500000 load entries loaded.
+thread 10: 500000 load entries loaded.
+thread 8: 500000 load entries loaded.
+thread 15: 500000 load entries loaded.
+thread 14: 600000 load entries loaded.
+thread 11: 600000 load entries loaded.
+thread 12: 600000 load entries loaded.
+thread 9: 600000 load entries loaded.
+thread 10: 600000 load entries loaded.
+thread 13: 600000 load entries loaded.
+thread 8: 600000 load entries loaded.
+thread 15: 600000 load entries loaded.
+thread 14: 700000 load entries loaded.
+thread 12: 700000 load entries loaded.
+thread 11: 700000 load entries loaded.
+thread 10: 700000 load entries loaded.
+thread 9: 700000 load entries loaded.
+thread 13: 700000 load entries loaded.
+thread 8: 700000 load entries loaded.
+thread 15: 700000 load entries loaded.
+thread 14: 800000 load entries loaded.
+thread 12: 800000 load entries loaded.
+thread 11: 800000 load entries loaded.
+thread 10: 800000 load entries loaded.
+thread 13: 800000 load entries loaded.
+thread 9: 800000 load entries loaded.
+thread 8: 800000 load entries loaded.
+thread 15: 800000 load entries loaded.
+thread 14: 900000 load entries loaded.
+thread 12: 900000 load entries loaded.
+thread 11: 900000 load entries loaded.
+thread 10: 900000 load entries loaded.
+thread 13: 900000 load entries loaded.
+thread 9: 900000 load entries loaded.
+thread 8: 900000 load entries loaded.
+thread 15: 900000 load entries loaded.
+thread 14: 1000000 load entries loaded.
+thread 12: 1000000 load entries loaded.
+thread 11: 1000000 load entries loaded.
+thread 10: 1000000 load entries loaded.
+thread 13: 1000000 load entries loaded.
+thread 9: 1000000 load entries loaded.
+thread 8: 1000000 load entries loaded.
+thread 15: 1000000 load entries loaded.
+thread 14: 1100000 load entries loaded.
+thread 12: 1100000 load entries loaded.
+thread 11: 1100000 load entries loaded.
+thread 10: 1100000 load entries loaded.
+thread 13: 1100000 load entries loaded.
+thread 9: 1100000 load entries loaded.
+thread 8: 1100000 load entries loaded.
+thread 15: 1100000 load entries loaded.
+thread 14: 1200000 load entries loaded.
+thread 12: 1200000 load entries loaded.
+thread 11: 1200000 load entries loaded.
+thread 13: 1200000 load entries loaded.
+thread 9: 1200000 load entries loaded.
+thread 10: 1200000 load entries loaded.
+thread 8: 1200000 load entries loaded.
+thread 15: 1200000 load entries loaded.
+thread 14: 1300000 load entries loaded.
+thread 12: 1300000 load entries loaded.
+thread 11: 1300000 load entries loaded.
+thread 13: 1300000 load entries loaded.
+thread 9: 1300000 load entries loaded.
+thread 10: 1300000 load entries loaded.
+thread 8: 1300000 load entries loaded.
+thread 15: 1300000 load entries loaded.
+thread 14: 1400000 load entries loaded.
+thread 12: 1400000 load entries loaded.
+thread 11: 1400000 load entries loaded.
+thread 13: 1400000 load entries loaded.
+thread 9: 1400000 load entries loaded.
+thread 10: 1400000 load entries loaded.
+thread 8: 1400000 load entries loaded.
+thread 15: 1400000 load entries loaded.
+thread 14: 1500000 load entries loaded.
+loader 14 load finish
+thread 6: 100000 trans entries loaded.
+thread 12: 1500000 load entries loaded.
+loader 12 load finish
+thread 4: 100000 trans entries loaded.
+thread 11: 1500000 load entries loaded.
+loader 11 load finish
+thread 3: 100000 trans entries loaded.
+thread 9: 1500000 load entries loaded.
+loader 9 load finish
+thread 13: 1500000 load entries loaded.
+loader 13 load finish
+thread 1: 100000 trans entries loaded.
+thread 5: 100000 trans entries loaded.
+thread 10: 1500000 load entries loaded.
+loader 10 load finish
+thread 2: 100000 trans entries loaded.
+thread 8: 1500000 load entries loaded.
+loader 8 load finish
+thread 0: 100000 trans entries loaded.
+thread 15: 1500000 load entries loaded.
+loader 15 load finish
+thread 7: 100000 trans entries loaded.
+node 1 finish
+warmup time 29s
+total 12000008,  retry1 298837,  retry2 6,  retry3 1172902
+1, throughput 0.1667
+total 468338,  retry1 2915,  retry2 0,  retry3 11878
+1, throughput 1.0299
+total 161322,  retry1 449,  retry2 0,  retry3 1842
+1, throughput 1.1109
+total 160533,  retry1 388,  retry2 0,  retry3 1552
+1, throughput 1.1085
+total 160169,  retry1 296,  retry2 0,  retry3 1198
+1, throughput 1.1093
+total 160887,  retry1 264,  retry2 0,  retry3 1066
+1, throughput 1.1088
+total 161865,  retry1 165,  retry2 0,  retry3 672
+1, throughput 1.1110
+total 161060,  retry1 128,  retry2 0,  retry3 514
+1, throughput 1.1102
+total 162657,  retry1 37,  retry2 0,  retry3 152
+1, throughput 1.1217
+total 163986,  retry1 0,  retry2 0,  retry3 0
+1, throughput 1.1246
+Thread 0 joined.
+Thread 1 joined.
+Thread 2 joined.
+Thread 3 joined.
+Thread 4 joined.
+Thread 5 joined.
+Thread 6 joined.
+Thread 7 joined.
+ ----- [TreeCache]:  cache size=70 MB free_size=58.928 MB skiplist_node_cnt=30607 ----- 
+consumed cache size = 11.072 MB
+ ----- [IdxCache]:  cache size=30 MB free_size=25.012 MB ---- 
+consumed hotspot buffer size = 4.988403 MB
+
+[END]

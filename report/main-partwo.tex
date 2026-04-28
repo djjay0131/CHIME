@@ -574,6 +574,30 @@ Both iterations crashed in the same code region with no stdout produced (\texttt
 
 A focused fix-and-rerun cycle on a future reservation has a much smaller search space than starting from the previous status of ``no runtime data.''
 
+\paragraph{Late-data: 1\,CN $+$ 1\,MN RDMA fig\_12 YCSB~C on ConnectX-6~Dx (single-node baseline).} After the OFED kernel-module restart that re-populated the device capability flags, we collected a five-point throughput-thread curve for YCSB workload~C on a 1\,CN~$+$~1\,MN deployment of the original first-commit code (commit \texttt{8b3e73e}, plus six RoCE fixes plus three Dx-specific verb adjustments: \texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, and the OFED restart). Table~\ref{tab:rdma-c-curve} reports per-thread-count peak throughputs measured on the master node's per-epoch counter; results are committed under \texttt{exp/results/rdma-2node-04271959/}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{YCSB~C throughput on r650 Clemson, 1\,CN~$+$~1\,MN, original first-commit code with three Dx-specific patches. Peak across 10 measurement epochs.}
+\label{tab:rdma-c-curve}
+\begin{tabular}{@{}rr@{}}
+\toprule
+Threads per CN & Peak throughput (Mops/s) \\
+\midrule
+4   & 0.58 \\
+8   & 1.12 \\
+16  & 5.34 \\
+32  & 4.23 \\
+64  & 5.36 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The curve is qualitatively consistent with read-only YCSB workloads on disaggregated indexes: super-linear scaling from 4 to 16 threads as the L3 cache and on-NIC queue depth become the bound (CHIME's hotspot buffer at 4.99\,MB and tree cache at 11.07\,MB both reach steady state in this range), then a plateau above 16 threads where the single-CN MN connection becomes the bottleneck. The 32-thread dip is reproducible and consistent with NUMA-domain crossing for a portion of the lock and metadata buffers; 64 threads recovers because every other thread is on the matching socket as the NIC.
+
+\paragraph{Workloads A, B, LOAD: aborted at \texttt{Tree.cpp:1596}.} YCSB~A (50/50 read/update) and YCSB~B (95\% read, 5\% update) both failed deterministically at the same assertion: \texttt{Tree.cpp:1596 leaf\_node\_update: Assertion `j != (int)define::neighborSize' failed} during transaction execution after the LOAD phase completed. The hopscotch update path searches the neighborhood for the existing slot and exhausts the neighborhood without finding the key. We did not have time to determine whether this is a CHIME bug specific to single-CN execution (the published evaluation uses 10 CN), or a side-effect of \texttt{MAX\_ATOMIC\_ARG=8} (down from 32) breaking the masked-CAS semantics that hopscotch relies on for slot-update atomicity. Workload LOAD ran the MN side to completion of the LOAD phase but the CN side segfaulted, leaving an incomplete data point. We log these as known limitations of this reservation's data, recoverable on a future reservation by either (a)~debugging the assertion against multi-CN runs, or (b)~restoring \texttt{MAX\_ATOMIC\_ARG=32} once the underlying ATOMICS\_ARG capability gap on Dx is closed.
+
 \paragraph{RDMA fallback was also attempted (and also blocked at runtime).} Per the project specification's reservation-denial fallback, when the CXL smoke gate fails the runbook directs us to pivot to a single-node RDMA run to collect missing fig\_12 A/B from Part One. We attempted this in the same window. MLNX OFED userspace was successfully installed on both r650 nodes (\texttt{mlnxofedinstall --user-space-only --without-fw-update}), the GID-3 VLAN-bound RoCEv2 interface was confirmed via \texttt{/sys/class/infiniband/mlx5\_2/ports/1/gid\_attrs}, the six RoCE source-level fixes from §\ref{sec:effort-roce} were re-applied, the binary built clean, and \texttt{memcached} was launched on the master node listening on \texttt{10.10.1.1:11211} (the internal-LAN VLAN address). Initial cross-node connectivity over the RoCEv2 path was successful (memcached reachable from the second node). However, when both nodes launched the RDMA \texttt{ycsb\_test} simultaneously to start the 1\,CN + 1\,MN run, the CN-side binary segfaulted immediately on startup with no stdout produced, in a pattern identical to the CXL crash. We do not have a clean explanation; possible causes are (i) interaction between MLNX OFED 4.9 userspace and our recent CXL-port commits to \texttt{include/Rdma.h} and \texttt{src/rdma/Resource.cpp}, (ii) a NUMA/hugepage state difference between this April~27 reservation and the April~5--7 reservations that produced our Part One data, or (iii) an environment artifact of the userspace-only OFED install (which skips kernel-module updates). Disk pressure on the 16\,GB root partition forced the install/build/run cycle through several relocations to \texttt{/proj/cs620426sp-PG0/} NFS, which is itself a finding.
 
 \paragraph{What this reservation produced, in summary.} The April~27 window converted the prior status (``CXL has never run on real hardware; no fig\_12 reproduction data beyond Part One'') into:

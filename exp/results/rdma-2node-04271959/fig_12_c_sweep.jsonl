@@ -1,0 +1,8 @@
+--- threads=4 ---
+{"workload":"c","threads":4,"peak_mops":0.5834}
+--- threads=16 ---
+{"workload":"c","threads":16,"peak_mops":5.341}
+--- threads=32 ---
+{"workload":"c","threads":32,"peak_mops":4.2287}
+--- threads=64 ---
+{"workload":"c","threads":64,"peak_mops":5.3616}
