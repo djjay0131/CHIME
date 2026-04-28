@@ -793,6 +793,7 @@ Apr 22, 8h auto              & \texttt{43677ece}\ldots & 2$\times$r650 & Expired
 Apr 23, 8h auto              & \texttt{5565ec96}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
 Apr 20--25, 5d admin         & \texttt{8c36e934}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
 Apr 21--26, 5d admin         & \texttt{cc0bf3c0}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
+Apr 27, 1d auto              & \texttt{2afbcb47}\ldots & 2$\times$r650 & {\color{mGreen}Honored} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -849,6 +850,72 @@ Undefined subroutine &main::DoStatus called at
   \textbf{Say:} Three improvements would have closed this. Fix the Perl bug. Make the scheduler error specific to the actual conflict. Add an explicit reservation-binding flag to startExperiment. Each one is independently sufficient to have surfaced our root cause within the first failed window. We submitted these as a structured change request to CloudLab support.\\
   \textbf{Transition:} What's left, what's next.\\
   \textbf{Time:} 50s
+}
+\end{frame}
+
+% ============================================================
+% NEW: Late Data — what Apr 27 produced
+% ============================================================
+
+\section{Late Data: Apr 27 r650}
+
+\begin{frame}[fragile]{What We Got on the r650 Reservation}
+\small After fixing three ConnectX-6 Dx compatibility issues (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart} to populate \texttt{device\_cap\_flags}):
+\vspace{0.3em}
+\begin{center}
+\textbf{fig\_12 Throughput-Thread Curves, 1\,CN $+$ 1\,MN, peak Mops/s} \\[0.3em]
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+Threads & C (read-only) & D (95\%R/5\%I) & E (range scan) \\
+\midrule
+8   & 1.12          & 1.07           & 0.21          \\
+16  & 3.26 (n=3)$\dagger$ & 2.11    & 0.61          \\
+32  & 4.21 (n=3)    & 3.86           & 0.82          \\
+48  & 5.19 (n=3)    & ---            & ---           \\
+64  & 5.36 (n=3)    & 4.82           & 1.32          \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.3em}
+{\scriptsize $\dagger$ Bimodal: 2/3 runs $\sim$2.22, 1/3 $\sim$5.34 --- hotspot buffer warm/cold transition}
+\note{
+  \textbf{Key point:} Real fig\_12 data — 12+ runs, 3 workloads, 4 thread counts.\\
+  \textbf{Say:} The April 27 reservation finally went through after we fixed three Dx compatibility issues. We got a complete throughput-thread curve for YCSB C, D, and E on a single CN single MN config. C is read-only and shows the cleanest scaling. D scales similarly. E is much slower because range scans are expensive. The 16-thread bimodality on C is interesting — sometimes the run starts cold and never warms up, sometimes it gets the hotspot buffer warm and stays at 5.3 Mops. This is repeatable across three replications.\\
+  \textbf{Transition:} We also ran the per-technique ablation.\\
+  \textbf{Time:} 70s
+}
+\end{frame}
+
+\begin{frame}{fig\_15a Ablation: Sherman \texttt{->} CHIME on YCSB C/D}
+\small Cumulative ablation, 16 (C) or 32 (D) threads, peak Mops/s:
+\vspace{0.3em}
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Variant & C (16t) & D (32t) \\
+\midrule
+Sherman-equivalent (all OFF)             & {\color{mRed}build failed} & --- \\
+$+$ \texttt{HOPSCOTCH\_LEAF\_NODE}       & 2.14 & 3.76 \\
+$+$ \texttt{VACANCY\_AWARE\_LOCK}        & 2.15 & 3.75 \\
+$+$ \texttt{METADATA\_REPLICATION}       & {\color{mGreen}\textbf{2.40}} & {\color{mGreen}\textbf{4.16}} \\
+$+$ \texttt{SIBLING\_BASED\_VALIDATION}  & 2.40 & 4.13 \\
+$+$ \texttt{SPECULATIVE\_READ} (full)    & 2.22 & 3.89 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.3em}
+\textbf{Findings:}
+\begin{itemize}[nosep]
+    \item \texttt{METADATA\_REPLICATION} is the only single-CN winner (saves an RTT per metadata read).
+    \item \texttt{VACANCY\_AWARE\_LOCK}, \texttt{SIBLING\_BASED\_VALIDATION}: no-ops on perf at 1\,CN; they're correctness mechanisms (Sherman LOAD finding).
+    \item \texttt{SPECULATIVE\_READ} is slightly negative without cross-CN access patterns.
+    \item Sherman-equivalent build (all features OFF) does not link --- artifact-buildability finding.
+\end{itemize}
+\note{
+  \textbf{Key point:} Per-technique deltas at 1 CN reveal which techniques need cross-CN coordination.\\
+  \textbf{Say:} We ran the same six-variant cumulative ablation that the paper does for fig 15a, but at one CN instead of ten. Only metadata replication moves the needle. Vacancy-aware lock is a no-op because there's no cross-CN write contention. Sibling-based validation is a correctness mechanism — it doesn't add throughput, it prevents the Sherman crash. Speculative read is slightly negative because the hotspot buffer relies on access patterns that single-CN can't produce. The all-features-OFF build doesn't link, which is itself an artifact-paper finding.\\
+  \textbf{Transition:} The CXL port hit a wall in the worker thread.\\
+  \textbf{Time:} 70s
 }
 \end{frame}
 

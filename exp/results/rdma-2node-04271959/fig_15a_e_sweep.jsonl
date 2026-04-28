@@ -1,0 +1,1 @@
+{"variant":"build-15a-hopscotch","workload":"e","threads":32,"peak_mops":0.5818,"note":"only successful E ablation point; other variants segfaulted at pool init"}
