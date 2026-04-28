@@ -1,0 +1,6 @@
+{"variant":"sherman-eq","peak_mops":0}
+{"variant":"hopscotch","peak_mops":2.1354}
+{"variant":"+vacancy","peak_mops":2.1471}
+{"variant":"+metadata","peak_mops":2.3968}
+{"variant":"+sibling","peak_mops":2.4019}
+{"variant":"chime","peak_mops":2.2246}

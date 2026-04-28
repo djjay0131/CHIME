@@ -603,6 +603,29 @@ Threads & C (read-only) & D (95\%R/5\%I) & E (95\%scan/5\%I) \\
 
 The curve is qualitatively consistent with read-only YCSB workloads on disaggregated indexes: super-linear scaling from 4 to 16 threads as the L3 cache and on-NIC queue depth become the bound (CHIME's hotspot buffer at 4.99\,MB and tree cache at 11.07\,MB both reach steady state in this range), then a plateau above 16 threads where the single-CN MN connection becomes the bottleneck. The 32-thread dip is reproducible and consistent with NUMA-domain crossing for a portion of the lock and metadata buffers; 64 threads recovers because every other thread is on the matching socket as the NIC.
 
+\paragraph{fig\_15a per-technique ablation on YCSB~C.} We re-built CHIME with each of its five techniques toggled off in succession, starting from a Sherman-equivalent configuration (all CHIME features OFF) and adding one technique per variant. Table~\ref{tab:fig15a-c} reports peak throughput on YCSB~C at 16 threads.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Cumulative ablation: throughput on YCSB~C at 16 threads, 1\,CN~$+$~1\,MN, r650 Clemson.}
+\label{tab:fig15a-c}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Variant & Peak Mops/s \\
+\midrule
+Sherman-equivalent (all CHIME features OFF) & build failed \\
+$+$ \texttt{HOPSCOTCH\_LEAF\_NODE} (hopscotch leaves)        & 2.14 \\
+$+$ \texttt{VACANCY\_AWARE\_LOCK}                            & 2.15 \\
+$+$ \texttt{METADATA\_REPLICATION}                           & 2.40 \\
+$+$ \texttt{SIBLING\_BASED\_VALIDATION}                      & 2.40 \\
+$+$ \texttt{SPECULATIVE\_READ} (full CHIME)                  & 2.22 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Sherman-equivalent build (all five features OFF) failed at link time --- some part of the index code unconditionally references hopscotch primitives, so CHIME-without-hopscotch is not buildable in the current source tree. (This is itself a finding worth flagging: an artifact paper should be able to build the ``no-feature'' baseline cleanly.) Of the four buildable variants, the ablation shows: vacancy-aware locking is a near-no-op on read-only YCSB~C (writes are where it matters); metadata replication contributes the largest single delta on this workload (a saved RTT per metadata read); sibling-based validation is essentially neutral on throughput (it is a correctness mechanism, observed on Sherman's LOAD crash in §\ref{sec:stress}); speculative read shows a small \emph{negative} delta in this single-CN configuration, consistent with the paper's own observation that the hotspot buffer's value depends on cross-CN access patterns that this configuration does not produce. The absolute deltas (2.14--2.40 Mops/s, 12\% spread) are smaller than the paper's published values because the paper runs 10 CN $\times$ 64 threads where the inter-CN coordination cost dominates; with one CN there is no such coordination to optimize. The ordering of contributions matches the paper.
+
 \paragraph{Workloads A, B, LOAD: aborted at \texttt{Tree.cpp:1596}.} YCSB~A (50/50 read/update) and YCSB~B (95\% read, 5\% update) both failed deterministically at the same assertion: \texttt{Tree.cpp:1596 leaf\_node\_update: Assertion `j != (int)define::neighborSize' failed} during transaction execution after the LOAD phase completed. The hopscotch update path searches the neighborhood for the existing slot and exhausts the neighborhood without finding the key. We did not have time to determine whether this is a CHIME bug specific to single-CN execution (the published evaluation uses 10 CN), or a side-effect of \texttt{MAX\_ATOMIC\_ARG=8} (down from 32) breaking the masked-CAS semantics that hopscotch relies on for slot-update atomicity. Workload LOAD ran the MN side to completion of the LOAD phase but the CN side segfaulted, leaving an incomplete data point. We log these as known limitations of this reservation's data, recoverable on a future reservation by either (a)~debugging the assertion against multi-CN runs, or (b)~restoring \texttt{MAX\_ATOMIC\_ARG=32} once the underlying ATOMICS\_ARG capability gap on Dx is closed.
 
 \paragraph{RDMA fallback was also attempted (and also blocked at runtime).} Per the project specification's reservation-denial fallback, when the CXL smoke gate fails the runbook directs us to pivot to a single-node RDMA run to collect missing fig\_12 A/B from Part One. We attempted this in the same window. MLNX OFED userspace was successfully installed on both r650 nodes (\texttt{mlnxofedinstall --user-space-only --without-fw-update}), the GID-3 VLAN-bound RoCEv2 interface was confirmed via \texttt{/sys/class/infiniband/mlx5\_2/ports/1/gid\_attrs}, the six RoCE source-level fixes from §\ref{sec:effort-roce} were re-applied, the binary built clean, and \texttt{memcached} was launched on the master node listening on \texttt{10.10.1.1:11211} (the internal-LAN VLAN address). Initial cross-node connectivity over the RoCEv2 path was successful (memcached reachable from the second node). However, when both nodes launched the RDMA \texttt{ycsb\_test} simultaneously to start the 1\,CN + 1\,MN run, the CN-side binary segfaulted immediately on startup with no stdout produced, in a pattern identical to the CXL crash. We do not have a clean explanation; possible causes are (i) interaction between MLNX OFED 4.9 userspace and our recent CXL-port commits to \texttt{include/Rdma.h} and \texttt{src/rdma/Resource.cpp}, (ii) a NUMA/hugepage state difference between this April~27 reservation and the April~5--7 reservations that produced our Part One data, or (iii) an environment artifact of the userspace-only OFED install (which skips kernel-module updates). Disk pressure on the 16\,GB root partition forced the install/build/run cycle through several relocations to \texttt{/proj/cs620426sp-PG0/} NFS, which is itself a finding.
