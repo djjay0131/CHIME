@@ -20,3 +20,39 @@ The RDMA-path crash is environmental — most likely related to MLNX OFED 4.9
 userspace-only installation (no kernel modules) on Ubuntu 20.04 with
 ConnectX-6 Dx. Run 7/8 (April 5-7) used full MLNX OFED with kernel modules
 on (likely) ConnectX-6 (not Dx) — that environment matters for ibv_exp_dct.
+
+=== Full MLNX OFED 4.9 + ConnectX-6 Dx finding (Apr 27 20:30) ===
+After mlnxofedinstall --add-kernel-support on both nodes (rebuilds kernel
+modules from source on Ubuntu 20.04 5.4 kernel), CHIME init runs further:
+
+CN side reaches:
+  kNodeCount 2, kThreadCount 4, kCoroCnt 1
+  ycsb_load: /proj/cs620426sp-PG0/ycsb_workloads/load_randint_workloadc
+  ycsb_trans: /proj/cs620426sp-PG0/ycsb_workloads/txn_randint_workloadc
+  shared memory size: 64GB, 0x7f...
+  rdma cache size: 4GB
+  Machine NR: 2
+  Failed to create QP errno=95 (Operation not supported)
+
+errno 95 = ENOTSUP. Reproduces with:
+- ibv_exp_create_qp + comp_mask = IBV_EXP_QP_INIT_ATTR_PD only
+- ibv_create_qp (plain, non-EXP)
+- max_send_wr/max_recv_wr=256 (well under device max of 32768)
+- max_inline_data=0
+- max_send_sge=1, max_recv_sge=1
+- qp_type=4 (IBV_QPT_UD, for the message connection)
+
+Device limits (mlx5_2 on ConnectX-6 Dx):
+- max_qp: 131072
+- max_qp_wr: 32768
+- max_sge: 30
+- max_qp_rd_atom: 16
+
+So ENOTSUP is NOT a parameter overflow. Hypothesis: ConnectX-6 Dx
+firmware/driver requires `attr.qp_type = IBV_QPT_DRIVER` and a separate
+device-specific init for UD-style messaging that's not in CHIME's code.
+Run 7-8 used ConnectX-6 (not Dx) where the standard path worked.
+
+Implication for next reservation: try a different CloudLab profile or
+hardware variant; or modify CHIME's RawMessageConnection to use the
+device-driver-specific UD QP creation path.
