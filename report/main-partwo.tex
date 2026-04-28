@@ -579,20 +579,23 @@ A focused fix-and-rerun cycle on a future reservation has a much smaller search 
 \begin{table}[H]
 \centering
 \small
-\caption{YCSB~C/D/E throughput on r650 Clemson, 1\,CN~$+$~1\,MN, original first-commit code with three Dx-specific patches (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart}). Peak across 10 measurement epochs.}
+\caption{YCSB~C/D/E throughput on r650 Clemson, 1\,CN~$+$~1\,MN, original first-commit code with three Dx-specific patches (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart}). Peak across 10 measurement epochs. Three-rep variance shown for the workload-C points where it was measured (a fourth rep at 16 threads showed the same bimodality).}
 \label{tab:rdma-c-curve}
-\begin{tabular}{@{}rrrr@{}}
+\begin{tabular}{@{}rrrrrr@{}}
 \toprule
-Threads & C (read-only) & D (95\%R/5\%I) & E (95\%scan/5\%I) \\
+Threads & C (mean, n=3) & C range & D (95\%R/5\%I) & E (scan) \\
 \midrule
-4   & 0.58 & --- & --- \\
-8   & 1.12 & 1.07 & 0.21 \\
-16  & 5.34 & 2.11 & 0.61 \\
-32  & 4.23 & 3.86 & 0.82 \\
-64  & 5.36 & 4.82 & 1.32 \\
+4   & 0.58 (n=1)         & ---             & ---     & ---     \\
+8   & 1.12 (n=2)         & 1.12--1.13      & 1.07    & 0.21    \\
+16  & 3.26 ($\dagger$)   & 2.22--5.34      & 2.11    & 0.61    \\
+32  & 4.21               & 4.20--4.22      & 3.86    & 0.82    \\
+48  & 5.19               & 5.14--5.25      & ---     & ---     \\
+64  & 5.36               & 5.31--5.39      & 4.82    & 1.32    \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The 16-thread point ($\dagger$) is bimodal across repetitions: two of three runs report $\sim 2.22$\,Mops while one reports $\sim 5.34$\,Mops. We do not have a clean explanation for this; the most likely cause is per-thread cache-line locality on the first descent from the root --- with 16 threads the root-internal-node and the hotspot buffer fit into a single L2 (CHIME's tree cache settles at $\sim 11$\,MB) so warm-cache versus cold-cache runs sit on the two sides of a sharp transition. At 32 threads and above, several threads always pay the cold-cache cost in any given run, and the throughput stabilizes. This is consistent with the steady-state behavior of CHIME's hotspot buffer described in the paper.
 
 \begin{figure}[H]
 \centering

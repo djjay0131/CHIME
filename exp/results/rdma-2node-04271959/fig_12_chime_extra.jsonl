@@ -1,0 +1,5 @@
+{"workload":"c","threads":8,"build":"15a-chime","peak_mops":1.1251}
+{"workload":"c","threads":16,"build":"15a-chime","peak_mops":2.2185}
+{"workload":"c","threads":32,"build":"15a-chime","peak_mops":9.882}
+{"workload":"c","threads":48,"build":"15a-chime","peak_mops":11.905}
+{"workload":"c","threads":64,"build":"15a-chime","peak_mops":5.4678}

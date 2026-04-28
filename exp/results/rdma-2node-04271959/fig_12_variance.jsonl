@@ -1,0 +1,12 @@
+{"workload":"c","threads":16,"rep":"c-16-r1","peak_mops":5.343}
+{"workload":"c","threads":16,"rep":"c-16-r2","peak_mops":2.2240}
+{"workload":"c","threads":16,"rep":"c-16-r3","peak_mops":2.2247}
+{"workload":"c","threads":32,"rep":"c-32-r1","peak_mops":4.1972}
+{"workload":"c","threads":32,"rep":"c-32-r2","peak_mops":4.2131}
+{"workload":"c","threads":32,"rep":"c-32-r3","peak_mops":4.2159}
+{"workload":"c","threads":48,"rep":"c-48-r1","peak_mops":5.1442}
+{"workload":"c","threads":48,"rep":"c-48-r2","peak_mops":5.1819}
+{"workload":"c","threads":48,"rep":"c-48-r3","peak_mops":5.2457}
+{"workload":"c","threads":64,"rep":"c-64-r1","peak_mops":5.3759}
+{"workload":"c","threads":64,"rep":"c-64-r2","peak_mops":5.3121}
+{"workload":"c","threads":64,"rep":"c-64-r3","peak_mops":5.3867}
