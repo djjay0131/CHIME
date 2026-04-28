@@ -79,17 +79,20 @@
 \begin{document}
 
 % ============================================================
-% SECTION 1: What is CHIME? (5 slides, ~3 min)
+% SECTION 1: Paper Overview (7 slides, ~5 min)
 % ============================================================
+
+\section{Paper Overview}
 
 % Slide 1 — Title
 \maketitle
 \note{
   \textbf{Key point:} Introduction.\\
-  \textbf{Say:} Good morning, I'm Jason Cusati, presenting my progress
-  on reproducing CHIME for CS 6204.\\
+  \textbf{Say:} Good morning, I'm Jason Cusati, presenting my final project
+  on reproducing CHIME (SOSP '24) for CS 6204. Before diving into our
+  results, let me recap the paper so we're all on the same page.\\
   \textbf{Transition:} Let's start with the problem CHIME solves.\\
-  \textbf{Time:} 15s
+  \textbf{Time:} 20s
 }
 
 % Slide 2 — The Problem
@@ -155,6 +158,69 @@
 }
 \end{frame}
 
+% Slide — CHIME's Five Techniques (detailed)
+\begin{frame}{CHIME's Five Techniques (CMake Flags)}
+\small Each technique adds an RDMA-amortizing optimization on top of a hopscotch-leaf B+~tree:
+\vspace{0.3em}
+\begin{center}
+\begin{tabular}{@{}lp{8.2cm}@{}}
+\toprule
+\textbf{CMake Flag} & \textbf{What It Does} \\
+\midrule
+\texttt{HOPSCOTCH\_LEAF\_NODE} & Hash-based leaf nodes; finds key in 1 RTT instead of binary-search \\
+\texttt{VACANCY\_AWARE\_LOCK}  & Lock word piggybacks vacancy bitmap; insert sees lock + free slot in one read \\
+\texttt{METADATA\_REPLICATION} & Per-segment replicated metadata; saves 1 RTT per leaf access \\
+\texttt{SIBLING\_BASED\_VALIDATION} & Sibling fence-key check on every read; catches stale-cache without re-read \\
+\texttt{SPECULATIVE\_READ}     & Hotspot buffer; warm keys shortcut neighborhood scan \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.5em}
+{\small The paper's fig\_15a evaluates these by toggling them \emph{cumulatively} on top of a Sherman baseline.}
+\note{
+  \textbf{Key point:} The 5 specific features that the paper ablates.\\
+  \textbf{Say:} The paper isolates five techniques. Hopscotch leaves are the
+  structural change — hash-based leaves replace sorted B+ leaves. The other
+  four are RDMA optimizations: vacancy-aware lock piggybacks the vacancy
+  bitmap on the lock word so an insert's lock-acquisition read also tells
+  it which slot is free. Metadata replication trades a small per-segment
+  size for a saved RTT on every leaf access. Sibling-based validation
+  catches stale caches via cross-validation against the sibling pointer's
+  fence keys. Speculative read shortcuts the neighborhood scan for hot
+  keys. We'll see fig\_15a reproduce these later.\\
+  \textbf{Transition:} Here's CHIME's headline claim.\\
+  \textbf{Time:} 75s
+}
+\end{frame}
+
+% Slide — Paper's Published Results
+\begin{frame}{Paper's Published Throughput-Latency Curves}
+\centering
+\IfFileExists{../report/figures/fig12-paper.png}{%
+  \includegraphics[width=0.95\textwidth]{../report/figures/fig12-paper.png}%
+}{%
+  \begin{tikzpicture}
+    \draw[mGray!40, dashed, rounded corners=4pt] (0,0) rectangle (10,5);
+    \node[mGray] at (5,2.5) {[fig\_12 from Bang et al.\ SOSP '24]};
+  \end{tikzpicture}%
+}
+\vspace{0.3em}
+
+{\scriptsize Source: Bang et al., \emph{CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory}, SOSP '24, Figure 12 (LOAD/A/B/C/D/E across CHIME, SMART, Sherman, ROLEX, SMART-Opt).}
+\note{
+  \textbf{Key point:} The paper's headline result we are trying to reproduce.\\
+  \textbf{Say:} This is fig 12 from the paper. Throughput on the x-axis,
+  P99 latency on the y-axis. Each panel is a YCSB workload — LOAD, A, B,
+  C, D, E. Six panels, five methods per panel. CHIME's curves push to the
+  right (higher throughput) and stay low (lower latency) compared to the
+  baselines. The paper reports 2 to 5.6 times higher peak throughput than
+  the next-best baseline on read-heavy workloads. Our job is to reproduce
+  the trends on CloudLab r650 hardware.\\
+  \textbf{Transition:} The headline claim.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
 % Slide 5 — The Claim
 {
 \setbeamercolor{background canvas}{bg=myRed}
@@ -170,7 +236,7 @@
   throughput than state-of-the-art DM indexes while using comparable
   or less cache. Our job: reproduce this on real hardware.\\
   \textbf{Transition:} Let me describe our experimental setup.\\
-  \textbf{Time:} 30s
+  \textbf{Time:} 20s
 }
 \end{frame}
 }
