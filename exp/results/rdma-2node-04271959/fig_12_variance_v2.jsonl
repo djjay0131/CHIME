@@ -1,0 +1,15 @@
+{"workload":"c","threads":16,"rep":"v2-16-r1","peak_mops":2.2293}
+{"workload":"c","threads":16,"rep":"v2-16-r2","peak_mops":2.2226}
+{"workload":"c","threads":16,"rep":"v2-16-r3","peak_mops":2.2314}
+{"workload":"c","threads":16,"rep":"v2-16-r4","peak_mops":2.2297}
+{"workload":"c","threads":16,"rep":"v2-16-r5","peak_mops":2.2261}
+{"workload":"c","threads":32,"rep":"v2-32-r1","peak_mops":4.2225}
+{"workload":"c","threads":32,"rep":"v2-32-r2","peak_mops":4.2175}
+{"workload":"c","threads":32,"rep":"v2-32-r3","peak_mops":4.2206}
+{"workload":"c","threads":32,"rep":"v2-32-r4","peak_mops":4.2276}
+{"workload":"c","threads":32,"rep":"v2-32-r5","peak_mops":4.2151}
+{"workload":"c","threads":48,"rep":"v2-48-r1","peak_mops":5.1962}
+{"workload":"c","threads":48,"rep":"v2-48-r2","peak_mops":5.1837}
+{"workload":"c","threads":48,"rep":"v2-48-r3","peak_mops":5.2040}
+{"workload":"c","threads":48,"rep":"v2-48-r4","peak_mops":12.008}
+{"workload":"c","threads":48,"rep":"v2-48-r5","peak_mops":5.2238}

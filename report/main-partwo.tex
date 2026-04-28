@@ -599,9 +599,23 @@ The 16-thread point ($\dagger$) is bimodal across repetitions: two of three runs
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig12-apr27-cde.pdf}
-\caption{Throughput-thread curves for YCSB workloads C, D, E on r650 Clemson, 1\,CN~$+$~1\,MN, Apr 27, 2026. The strong C-curve jump from 8 to 16 threads reflects CHIME's hotspot buffer and tree cache reaching steady state. D's slower scaling reflects the 5\% insert fraction (which drives leaf splits and parent updates). E's range-scan workload is bound by tree-traversal depth and is the lowest-throughput of the three at every thread count, consistent with the paper's published ordering.}
+\includegraphics[width=0.85\textwidth]{figures/fig12-final-cde.pdf}
+\caption{Throughput-thread curves for YCSB workloads C, D, E on r650 Clemson, 1\,CN~$+$~1\,MN, Apr 27, 2026. Where multiple replications were collected, points show the mean.}
 \label{fig:fig12-apr27}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/fig12-variance.pdf}
+\caption{Eight-replication variance for YCSB~C across thread counts. Tight reproducibility at 32 and 64 threads ($<2\%$ spread), bimodal behavior at 16 and 48 threads (one-in-eight runs lands on the warm-cache mode at 5.34 or 12.01\,Mops/s; the rest sit at the cold-cache steady state). The bimodality reflects whether the hotspot buffer warms up before the throughput-measurement epoch or after.}
+\label{fig:fig12-variance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig15a-ablation.pdf}
+\caption{fig\_15a cumulative ablation: each variant adds one CHIME technique on top of the previous. Workload C measured at 16 threads, workload D at 32 threads. \texttt{METADATA\_REPLICATION} is the only single-CN winner; \texttt{VACANCY\_AWARE\_LOCK} and \texttt{SIBLING\_BASED\_VALIDATION} are correctness mechanisms whose throughput value depends on cross-CN contention; \texttt{SPECULATIVE\_READ}'s hotspot buffer mildly hurts throughput in the absence of cross-CN access patterns it is designed for.}
+\label{fig:fig15a-ablation}
 \end{figure}
 
 The curve is qualitatively consistent with read-only YCSB workloads on disaggregated indexes: super-linear scaling from 4 to 16 threads as the L3 cache and on-NIC queue depth become the bound (CHIME's hotspot buffer at 4.99\,MB and tree cache at 11.07\,MB both reach steady state in this range), then a plateau above 16 threads where the single-CN MN connection becomes the bottleneck. The 32-thread dip is reproducible and consistent with NUMA-domain crossing for a portion of the lock and metadata buffers; 64 threads recovers because every other thread is on the matching socket as the NIC.
