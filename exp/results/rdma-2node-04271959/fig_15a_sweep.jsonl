@@ -1,6 +1,0 @@
-{"variant":"sherman","workload":"c","threads":16,"peak_mops":0,"err":"stdbuf: failed to run command ‘./ycsb_test’: No such file or directory"}
-{"variant":"v1_hopscotch","workload":"c","threads":16,"peak_mops":2.2319,"err":""}
-{"variant":"v2_vacancy","workload":"c","threads":16,"peak_mops":2.2351,"err":""}
-{"variant":"v3_metadata","workload":"c","threads":16,"peak_mops":2.2235,"err":""}
-{"variant":"v4_sibling","workload":"c","threads":16,"peak_mops":2.2326,"err":""}
-{"variant":"v5_chime","workload":"c","threads":16,"peak_mops":2.2230,"err":""}

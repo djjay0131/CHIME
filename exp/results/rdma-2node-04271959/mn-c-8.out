@@ -1,8 +1,0 @@
-kNodeCount 2, kThreadCount 8, kCoroCnt 1
-ycsb_load: /proj/cs620426sp-PG0/ycsb_workloads/load_randint_workloadc
-ycsb_trans: /proj/cs620426sp-PG0/ycsb_workloads/txn_randint_workloadc
-[4mshared memory size: 64GB, 0x7f65e3800000[0m
-[4mrdma cache size: 4GB[0m
-[4mMachine NR: 2[0m
-[4mCompute server 0 start up [82.86.0.0]
-[0m
