@@ -840,6 +840,57 @@ Assertion `k >= fence_keys.lowest' failed
 \end{frame}
 
 % ============================================================
+% NEW SECTION: CXL Runtime Results (May 1 breakthrough)
+% ============================================================
+
+\section{CXL Runtime Results}
+
+\begin{frame}{CXL: From Crash to Throughput in One Patch}
+\small After several reservations of failed runs, instrumented traces of \texttt{Tree::get\_root\_ptr} produced this signature on May 1:
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single]
+[trc] get_root_ptr: level=4 ptr.offset=0x46bf00      <- normal
+[trc] get_root_ptr: level=4 ptr.offset=0x46bf00      <- normal
+[trc] get_root_ptr: level=33025 ptr.offset=0x4504... <- CORRUPTED
+<segfault on next read_sync>
+\end{lstlisting}
+\textbf{Bug}: \texttt{CxlTransport::alloc} initialized \texttt{alloc\_offset\_ = 0} and grew linearly. Once allocations exceeded 8\,MB, alloc returned addresses that overlapped \texttt{root\_ptr\_ptr} at \texttt{kRootPointerStoreOffest = kChunkSize/2 = 8\,MB}, corrupting the level-4 root pointer between writes/reads.
+\vspace{0.4em}
+
+\textbf{Fix} (\texttt{a3c9e87}): \texttt{alloc\_offset\_(define::kChunkSize)} --- reserve the first 16\,MB. One line.
+\vspace{0.4em}
+
+\textbf{Result}: \texttt{ycsb\_test 1 1 1 randint c} runs to {\color{mGreen}\texttt{[END]}} at 0.573\,Mops/s, 10 epochs, no segfault.
+\note{
+  \textbf{Key point:} The CXL bug was a one-line allocator overlap with root-pointer storage.\\
+  \textbf{Say:} The CXL crash that haunted three reservations turned out to be one line of code. CxlTransport's alloc started at offset zero. The tree's root pointer is stored at offset 8 MB. Once allocations crossed 8 MB, the allocator started handing back addresses that landed on top of the root pointer, corrupting it. The first read after that crossing returned a level-33-thousand garbage value, and the next read of that fake address segfaulted in libc memcpy. The fix is to start the allocator at 16 MB. One line. The instrumented trace makes the bug obvious in retrospect.\\
+  \textbf{Transition:} With CXL working, we ran the full sweep.\\
+  \textbf{Time:} 70s
+}
+\end{frame}
+
+\begin{frame}{CXL vs RDMA: 17 New Data Points}
+\centering
+\includegraphics[height=0.78\textheight]{../report/figures/fig12-rdma-vs-cxl.pdf}
+\note{
+  \textbf{Key point:} CXL wins on read-heavy workloads, loses on range scans at low thread counts.\\
+  \textbf{Say:} Three panels, three workloads. C is read-only, D is 95\% read 5\% insert, E is range scan. CXL in red, RDMA in blue. On C and D, CXL roughly triples RDMA's throughput at low to mid thread counts. The picture flips on E. Range scans benefit from RDMA's coroutine-pipelined reads. CXL is synchronous --- each memcpy blocks. So at 16 threads CXL is half RDMA on E. Above 32 threads thread parallelism makes up for the missing intra-thread pipelining and CXL catches up.\\
+  \textbf{Transition:} The speedup ratio makes the workload-dependence clearer.\\
+  \textbf{Time:} 80s
+}
+\end{frame}
+
+\begin{frame}{CXL/RDMA Ratio: Workload-Dependent Win}
+\centering
+\includegraphics[height=0.78\textheight]{../report/figures/fig12-cxl-rdma-ratio.pdf}
+\note{
+  \textbf{Key point:} The ratio chart isolates the workload-dependent CXL story.\\
+  \textbf{Say:} This is the speedup ratio. Bars above one mean CXL wins; below one means RDMA wins. Read-heavy workloads C and D are uniformly above one. Range-scan E dips to roughly half RDMA at 16 threads, then crosses over at 32. The implication for a CXL-native CHIME is concrete: a transport-only port leaves the range-scan optimization on the table. A CXL-native scan would need either prefetch hints or helper threads to recover the in-flight pipelining that RDMA gets from coroutines.\\
+  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% ============================================================
 % NEW SECTION: Postmortem (3 slides)
 % ============================================================
 
