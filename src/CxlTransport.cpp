@@ -18,7 +18,7 @@ CxlTransport::CxlTransport(int numa_node, size_t pool_size, size_t lock_size,
       numa_node_(numa_node),
       machine_nr_(machine_nr),
       my_node_id_(0),
-      alloc_offset_(0),
+      alloc_offset_(define::kChunkSize),  // FIX: skip root_ptr_ptr region at kRootPointerStoreOffest = kChunkSize/2
       barrier_initialized_(false) {
 
   // Allocate main memory pool
