@@ -576,6 +576,50 @@ Both iterations crashed in the same code region with no stdout produced (\texttt
 
 A focused fix-and-rerun cycle on a future reservation has a much smaller search space than starting from the previous status of ``no runtime data.''
 
+\paragraph{Resolution (May 1 reservation): the bug was a one-line allocator overlap.} A new reservation on May 1 unblocked the focused bisection. We instrumented \texttt{Tree::get\_root\_ptr}, \texttt{insert\_internal}, and \texttt{internal\_node\_search} with prints of every \texttt{GlobalAddress} they consume. The trace produced a clean signature: dozens of consecutive \texttt{get\_root\_ptr} calls returning a sensible \texttt{level=4, ptr.offset=0x46bf00}, followed by exactly one \texttt{get\_root\_ptr} returning \texttt{level=33025, ptr.offset=0x45048001ca00} (215\,TB --- garbage), followed by the segfault on the next \texttt{read\_sync}. The root pointer storage at \texttt{root\_ptr\_ptr = GlobalAddress\{0, kRootPointerStoreOffest\} = (0, 8\,MB)} was being overwritten by allocations: \texttt{CxlTransport::alloc} initialized \texttt{alloc\_offset\_ = 0} and grew linearly, so once allocated bytes exceeded 8\,MB, alloc handed back addresses that overlapped the root-pointer area, corrupting the level-4-root pointer between writes and reads. The fix is one line: initialize \texttt{alloc\_offset\_(define::kChunkSize)} so the first 16\,MB are reserved for the root-pointer area. Committed as \texttt{a3c9e87}. After the fix, \texttt{ycsb\_test 1 1 1 randint c} runs to completion: 10 epochs, \texttt{cluster throughput 0.573\,Mops}, clean \texttt{[END]}. The scope of this fix is exactly one suspect from the three named in the previous paragraph: ``read\_sync transInternalSize from leaf-sized address'' was not the cause; nor was the \texttt{GlobalAddress} bit-packing; the cause was the allocator failing to reserve the metadata region the original RDMA \texttt{DSMKeeper} reserved implicitly.
+
+\paragraph{CXL throughput-thread curve (Figure~\ref{fig:cxl-rdma-compare}, May 1).} With the allocator fix landed, we collected a single-CN CXL throughput curve for YCSB~C across 1, 2, 4, 8, 16, 32, 64 threads. Table~\ref{tab:cxl-vs-rdma} pairs the CXL numbers against the corresponding RDMA peaks from the same workload on the same hardware (1\,CN + 1\,MN configuration, two-node r650 Clemson reservation \texttt{2afbcb47}). Across the lower end of the thread sweep the CXL transport delivers 2--3$\times$ the RDMA throughput; at high thread counts the gap narrows because the single-CN hop count is no longer the bottleneck.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Single-CN CXL vs.\ RDMA peak throughput on YCSB~C, r650 Clemson, May 1, 2026. RDMA peaks are taken from the variance runs (best-of-N at each thread count). CXL peaks are single-shot since reproducibility was not (yet) measured. The CXL/RDMA ratio drops at $\geq 32$ threads because at that point the RDMA pipeline is bound on the same compute-side resources (cache, masked-CAS retry rate) as CXL is.}
+\label{tab:cxl-vs-rdma}
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+Threads & RDMA peak (Mops/s) & CXL (Mops/s) & CXL$/$RDMA \\
+\midrule
+1   & ---     & 0.60  & ---   \\
+2   & ---     & 1.09  & ---   \\
+4   & 0.58    & 1.99  & 3.43$\times$ \\
+8   & 1.13    & 3.50  & 3.10$\times$ \\
+16  & 5.34    & 6.52  & 1.22$\times$ \\
+32  & 9.88    & 10.37 & 1.05$\times$ \\
+64  & 5.47    & 10.49 & 1.92$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The CXL curve is monotone in thread count (no bimodality) which is consistent with the elimination of the cross-CN cache-warming dynamics that produced the RDMA-side bimodality at 16 and 48 threads. The CXL transport, having no NIC-side queue depth or completion polling, has no equivalent dynamic.
+
+\paragraph{Three-workload CXL evaluation: a workload-dependent picture.} We extended the CXL sweep to all three reproducible workloads (C read-only, D 95\%/5\% read/insert, E range-scan). Figure~\ref{fig:cxl-rdma-compare} plots both transports side by side; Figure~\ref{fig:cxl-rdma-ratio} renders the per-workload speedup ratio.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/fig12-rdma-vs-cxl.pdf}
+\caption{CHIME throughput-thread curves on RDMA and CXL transports, single CN $+$ MN, r650 Clemson, May 1 2026. CXL's emulated transport (NUMA mmap with \texttt{numa\_set\_preferred(1)}) wins decisively on read-only and read-mostly workloads (C, D) but loses to RDMA's coroutine-pipelined reads on the range-scan workload (E) at low thread counts, only catching up at 32 threads when there are enough threads to hide CXL's per-read synchronicity.}
+\label{fig:cxl-rdma-compare}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig12-cxl-rdma-ratio.pdf}
+\caption{CXL/RDMA throughput ratio per workload and thread count. Values $>1$ mean CXL outperforms RDMA at the same configuration; values $<1$ mean RDMA wins. C and D show CXL wins across the board ($1.05$--$3.40\times$). E shows the crossover: CXL is $0.53\times$ RDMA at 16 threads but $1.27\times$ at 32 threads. The crossover happens because CHIME's range-scan implementation issues multiple in-flight RDMA \texttt{READ} requests per coroutine per thread; CXL has no such pipeline (each \texttt{memcpy} is synchronous), so range scans are serialized within each thread until thread parallelism alone makes up for the loss.}
+\label{fig:cxl-rdma-ratio}
+\end{figure}
+
+\paragraph{What this evaluation tells us about CHIME on CXL.} The headline finding is workload-dependent. On read-heavy workloads where each operation is a single point lookup, CXL's $\sim$80\,ns NUMA-loop latency wins over RDMA's $\sim$2\,$\mu$s round trip by a factor consistent with the latency ratio. On range scans where the RDMA implementation amortizes the round-trip cost across many in-flight reads per coroutine, CXL's synchronous transport loses ground until thread parallelism catches up. The implication for CXL-native index design is concrete: a CXL port that simply substitutes the transport (as ours does) leaves the range-scan optimization on the table; a CXL-native scan operator would need to either run additional helper threads per scan or use prefetch hints (\texttt{\_\_builtin\_prefetch}) to batch loads into the cache hierarchy. We did not have time to implement either; both belong in a CXL-native CHIME successor as the next paper-worthy investigation.
+
 \paragraph{The scheduler bug recurred when the experiment ended --- a clean reproduction recipe.} The April 27 experiment (\texttt{chime-04271959}) hit its 16-hour CloudLab auto-expiry at 11:59 UTC on April 28. The reservation (UUID \texttt{2afbcb47}) remained active until 16:00 UTC the same day, so we attempted to start a fresh experiment against the still-live reservation to use the remaining four hours of capacity. All five attempts (UUIDs \texttt{d58493c6}\ldots and four others) returned the same scheduler error verbatim: \texttt{0 available because of existing resource reservations to other projects or users}, even as the dry-run \texttt{nbd} confirmed r650 Clemson capacity was held through April 29. The April 27 success was therefore a single-shot honoring of the reservation that could not be re-bound once the original experiment ended. The structural finding is that the scheduler's reservation-to-experiment binding logic fails across experiment boundaries even when the reservation itself remains valid --- the same pattern observed during the April 22--26 outage in §\ref{sec:postmortem-error}, now demonstrated with a deterministic reproduction recipe suitable for a CloudLab support escalation.
 
 \paragraph{Late-data: 1\,CN $+$ 1\,MN RDMA fig\_12 YCSB~C on ConnectX-6~Dx (single-node baseline).} After the OFED kernel-module restart that re-populated the device capability flags, we collected a five-point throughput-thread curve for YCSB workload~C on a 1\,CN~$+$~1\,MN deployment of the original first-commit code (commit \texttt{8b3e73e}, plus six RoCE fixes plus three Dx-specific verb adjustments: \texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, and the OFED restart). Table~\ref{tab:rdma-c-curve} reports per-thread-count peak throughputs measured on the master node's per-epoch counter; results are committed under \texttt{exp/results/rdma-2node-04271959/}.

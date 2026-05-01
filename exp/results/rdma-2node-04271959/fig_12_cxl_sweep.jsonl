@@ -1,0 +1,7 @@
+{"transport":"cxl","workload":"c","threads":1,"peak_mops":0.596}
+{"transport":"cxl","workload":"c","threads":2,"peak_mops":1.095}
+{"transport":"cxl","workload":"c","threads":4,"peak_mops":1.985}
+{"transport":"cxl","workload":"c","threads":8,"peak_mops":3.497}
+{"transport":"cxl","workload":"c","threads":16,"peak_mops":6.523}
+{"transport":"cxl","workload":"c","threads":32,"peak_mops":10.365}
+{"transport":"cxl","workload":"c","threads":64,"peak_mops":10.492}

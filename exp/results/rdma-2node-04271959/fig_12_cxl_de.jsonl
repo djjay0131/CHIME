@@ -1,0 +1,10 @@
+{"transport":"cxl","workload":"d","threads":4,"peak_mops":2.029}
+{"transport":"cxl","workload":"d","threads":8,"peak_mops":3.531}
+{"transport":"cxl","workload":"d","threads":16,"peak_mops":6.654}
+{"transport":"cxl","workload":"d","threads":32,"peak_mops":10.367}
+{"transport":"cxl","workload":"d","threads":64,"peak_mops":10.739}
+{"transport":"cxl","workload":"e","threads":4,"peak_mops":0.068}
+{"transport":"cxl","workload":"e","threads":8,"peak_mops":0.187}
+{"transport":"cxl","workload":"e","threads":16,"peak_mops":0.326}
+{"transport":"cxl","workload":"e","threads":32,"peak_mops":1.041}
+{"transport":"cxl","workload":"e","threads":64,"peak_mops":1.428}
