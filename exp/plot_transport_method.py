@@ -41,10 +41,8 @@ def main() -> None:
     out_dir = Path(__file__).parent / ".." / "report" / "figures"
 
     chime_rdma = []
-    for f in ["fig_12_c_sweep.jsonl", "fig_12_chime_extra.jsonl",
-              "fig_12_de_sweep.jsonl"]:
-        chime_rdma.extend(load_jsonl(apr27 / f))
-    chime_rdma.append({"workload": "c", "threads": 8, "peak_mops": 1.12})
+    for w in "cde":
+        chime_rdma.extend(load_jsonl(may2 / f"chime_rdma_may2_{w}.jsonl"))
 
     chime_cxl = (load_jsonl(apr27 / "fig_12_cxl_sweep.jsonl")
                  + load_jsonl(apr27 / "fig_12_cxl_de.jsonl"))
@@ -84,8 +82,8 @@ def main() -> None:
         ax.grid(alpha=0.3)
         ax.legend(loc="best", fontsize=9)
 
-    fig.suptitle("Transport vs Method: CHIME/Sherman x RDMA/CXL on r650 Clemson, 1 CN + 1 MN",
-                 fontsize=12)
+    fig.suptitle("Transport vs Method: CHIME/Sherman x RDMA/CXL, r650 Clemson 1 CN + 1 MN (RDMA May 2 + CXL May 1, same hardware)",
+                 fontsize=11)
     fig.tight_layout()
     out = out_dir / "fig12-transport-method.pdf"
     fig.savefig(out, bbox_inches="tight")
