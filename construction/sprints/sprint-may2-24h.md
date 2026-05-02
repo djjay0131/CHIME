@@ -1,0 +1,69 @@
+# Sprint: May 2 17:00 UTC — May 3 17:00 UTC, 4 r650 Clemson nodes
+
+**Reservation:** `312ca700-36c8-4e29-a911-dbad8ab5d8e1` (4 r650 Clemson)
+**Window:** 2026-05-02 17:00 UTC -> 2026-05-03 17:00 UTC (24 h)
+**Hardware available:** 4 nodes — supports up to **3 CN + 1 MN**
+**Mode:** autonomous; control-net guard active on all nodes; results -> `/proj/cs620426sp-PG0/djjay-results/`
+
+## Themes (priority-ordered)
+
+1. **Multi-CN data on r650 Clemson.** First time we have a 3 CN + 1 MN config that matches the paper's geometry. CHIME / SMART / ROLEX / Sherman x C/D/E.
+2. **CXL ports for SMART, ROLEX, Sherman.** Sherman-CXL exists already (CHIME source with features off). SMART and ROLEX have their own transports — port each behind a `USE_CXL=on` flag so we can do same-method RDMA-vs-CXL on each.
+3. **Cross-method on CXL.** Direct CXL comparison of the four indexes on the same hardware.
+4. **Variance reps.** Tighten the cross-day variance claim by adding 5–10 reps per cell at T=16, T=32 for the most-cited points.
+5. **Higher thread counts.** T=96, T=128 on CXL (single-process) and on RDMA at 3 CN to find scaling ceilings.
+6. **Workloads A/B retry.** Sherman crashes on A/B at single-CN; check if 3 CN + 1 MN closes the race the way the paper implies.
+
+## Phase plan (24 h)
+
+| Phase | Time-window (UTC)    | Goal                                                           |
+| ----- | -------------------- | -------------------------------------------------------------- |
+| 0     | 17:00 – 17:20 (20m)  | Auto-create experiment; prep-experiment.sh; smoke RDMA + CXL   |
+| 1     | 17:20 – 19:20 (2h)   | 3 CN + 1 MN sweep: CHIME / SMART / Sherman C/D/E (RDMA)        |
+| 2     | 19:20 – 20:20 (1h)   | 3 CN + 1 MN ROLEX C/D/E retry (predicted to clear synonym leaf) |
+| 3     | 20:20 – 22:20 (2h)   | Variance reps: CHIME-CXL T=16/32 x C/D/E x 5 reps              |
+| 4     | 22:20 – 02:20 (4h)   | **CXL port for Sherman/SMART/ROLEX (engineering)** + smoke    |
+| 5     | 02:20 – 06:20 (4h)   | SMART-CXL + ROLEX-CXL sweeps (single-process, NUMA emulation)  |
+| 6     | 06:20 – 09:20 (3h)   | High thread count sweep: T=96, T=128 on CXL + 3 CN RDMA        |
+| 7     | 09:20 – 13:20 (4h)   | Workload A/B retry at 3 CN + 1 MN                              |
+| 8     | 13:20 – 16:20 (3h)   | Long variance run: CHIME-RDMA bimodality at T=16, 30 reps      |
+| 9     | 16:20 – 17:00 (40m)  | Final pulldown, plots, report update, push                     |
+
+## Phase 4: CXL port plan (highest engineering risk)
+
+### SMART
+- Source: `/proj/cs620426sp-PG0/djjay-repos/SMART`
+- Approach: replicate CHIME's `CxlTransport` + `CxlDSM` pattern, gated by a new `USE_CXL` cmake option.
+- Likely files to add: `include/CxlTransport.h`, `src/CxlTransport.cpp`, `include/CxlDSM.h`, `src/CxlDSM.cpp`.
+- SMART's `DSM` calls `read_sync` / `write_sync` / `cas_sync` against the RDMA transport — we hook them to the CXL pool.
+- Risk: SMART has lock-free internal nodes that assume RDMA atomicity guarantees. CXL emulation uses regular x86 atomics, which should map cleanly.
+
+### ROLEX
+- Source: `/proj/cs620426sp-PG0/djjay-repos/ROLEX`
+- Same approach. Risk: ROLEX has a learned-index pre-train phase that loads 60M keys; this should be transport-agnostic (it's all CN-side memory).
+
+### Sherman
+- Already done — `build-Sherman-cxl` is the same source as CHIME with all 5 feature flags off.
+
+## Storage / sweep pattern (avoid ssh-polling)
+
+- All experiment binaries write JSONL to `/proj/cs620426sp-PG0/djjay-results/`.
+- Master node maintains `/proj/cs620426sp-PG0/djjay-results/heartbeat.txt` (one line per minute).
+- Laptop wakes every 30 min; one `scp -r` of `/proj/cs620426sp-PG0/djjay-results/` to `exp/results/may2-24h/`.
+- Plots regenerate locally; results commit + push to GitHub.
+- Control-net guard is active on every node; aborts on >500 MB cumulative public traffic.
+
+## Success criteria
+
+- Multi-CN data for at least CHIME and one competitor on at least workload C.
+- ROLEX-D crash either reproduced at multi-CN (negative) or absent (predicted positive).
+- CXL ports for SMART or ROLEX runtime-validated end-to-end.
+- Variance error bars on the cross-day claim (CHIME-CXL stable, RDMA bimodal).
+- Report updated with new findings, presentation updated.
+
+## Failure modes / fallbacks
+
+- If experiment provisioning fails: poll portal-cli, retry every 5 min for up to 30 min, then alert.
+- If CXL port doesn't compile: skip and run a deeper RDMA sweep instead.
+- If a node dies mid-run: continue on remaining nodes; nodes-file is regenerated each prep.
+- If control-net guard trips: ABORT all background sweeps, kill ycsb_test on every node, scp the guard log down, diagnose.
