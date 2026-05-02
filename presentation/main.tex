@@ -891,6 +891,39 @@ Assertion `k >= fence_keys.lowest' failed
 \end{frame}
 
 % ============================================================
+% NEW SECTION: Single-CN Competitor Comparison (May 2)
+% ============================================================
+
+\section{Competitor Methods, Same Hardware}
+
+\begin{frame}{Single-CN Competitors: Sherman, SMART, ROLEX}
+\centering
+\includegraphics[height=0.78\textheight]{../report/figures/fig12-competitors.pdf}
+\note{
+  \textbf{Key point:} The May 2 cluster also gave us SMART, Sherman, and ROLEX on the same single-CN hardware --- so the competitor comparison is now apples-to-apples with our CXL data, not just the multi-CN runs.\\
+  \textbf{Say:} The May 1 cluster stayed alive long enough to extend the comparison. We rebuilt CHIME with all five features off (that's Sherman) plus dropped in SMART from dmemsys/SMART and ROLEX from River861's CHIME-compatible re-implementation. All four methods share the same harness --- same memcached coordination, same workload files, same ycsb\_test entry point. Sherman scales most aggressively on C: 14 Mops/s at 64 threads, no per-operation overhead from CHIME's hopscotch displacement or speculative read. SMART peaks at 10 then regresses --- its update-in-place leaves bottleneck at high concurrency. ROLEX shipped in time only for workload C; on D and E its 60-million pre-train key load plus learned-model training blew past our 90-second per-point budget. We re-ran ROLEX D with a 300-second budget after the main sweep.\\
+  \textbf{Transition:} Three things stand out about this picture.\\
+  \textbf{Time:} 75s
+}
+\end{frame}
+
+\begin{frame}{What the Single-CN Competitor Curves Tell Us}
+\small
+\textbf{Three findings} from the May 2 single-CN sweep:
+\begin{itemize}
+  \item \textbf{Curve shapes match the paper.} Sherman scales linearly on C to 64 threads; CHIME / SMART / ROLEX bend earlier --- same shape as the paper's Figure~12, shifted down by the single-CN factor.
+  \item \textbf{ROLEX's training cost is real.} 60\,M pre-train keys $+$ epsilon-bounded model fitting, all serialized on the CN. Easy to miss in the paper's reporting; surfaced here as an operational consideration for learned indexes on disaggregated memory.
+  \item \textbf{Methods cluster on a single CN.} Gap is at most $1.4\times$ on C, $1.3\times$ on D, $1.1\times$ on E. The paper's wider gaps appear at multi-CN scale --- consistent with coordination overhead amortizing differently as CN count grows.
+\end{itemize}
+\note{
+  \textbf{Key point:} Three concrete findings from the new single-CN data, all of which connect back to the paper's larger-cluster claims.\\
+  \textbf{Say:} First, the curve shapes match the paper at single-CN scale, just shifted down. Second, ROLEX's training-time overhead is significant and worth flagging --- we make it explicit here. Third, the method-to-method gap on one CN is at most 1.4-times on C; the paper's bigger gaps are at multi-CN scale, which is consistent with their coordination overhead claims.\\
+  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% ============================================================
 % NEW SECTION: Postmortem (3 slides)
 % ============================================================
 
