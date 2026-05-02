@@ -928,6 +928,17 @@ Assertion `k >= fence_keys.lowest' failed
 }
 \end{frame}
 
+\begin{frame}{CXL fig\_15a: Speculative Read Can Hurt on CXL}
+\centering
+\includegraphics[height=0.65\textheight]{../report/figures/fig15a-cxl-ablation.pdf}
+\note{
+  \textbf{Key point:} The optimization stack that maximizes RDMA throughput is not transport-independent. Speculative read --- the last bar in CHIME's RDMA fig\_15a --- can be NEGATIVE-value on CXL.\\
+  \textbf{Say:} CXL fig\_15a on workload C, 16 and 32 threads. Full CHIME-CXL --- the rightmost bar --- is SLOWER than +Sibling at 16 threads. About 6.79 versus 8.01 Mops per second. At 32 threads CHIME-CXL barely edges +Sibling. Compare to the paper's RDMA fig\_15a where speculative read consistently adds a small positive delta at every thread count. The mechanism that makes speculative read worthwhile on RDMA --- starting an extra read in parallel to hide the round-trip --- has no payoff on a synchronous CXL transport. The second read just serializes with the first. Implication: a CXL-native CHIME successor would gain more from DISABLING speculative read than from keeping it. The optimization stack is transport-specific.\\
+  \textbf{Transition:} The reproducibility finding is the cleanest data point we have.\\
+  \textbf{Time:} 75s
+}
+\end{frame}
+
 \begin{frame}{Cross-Day Reproducibility: CXL Stable, RDMA Bimodal}
 \centering
 \includegraphics[height=0.65\textheight]{../report/figures/fig12-cxl-reproducibility.pdf}
