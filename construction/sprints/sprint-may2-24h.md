@@ -67,3 +67,13 @@
 - If CXL port doesn't compile: skip and run a deeper RDMA sweep instead.
 - If a node dies mid-run: continue on remaining nodes; nodes-file is regenerated each prep.
 - If control-net guard trips: ABORT all background sweeps, kill ycsb_test on every node, scp the guard log down, diagnose.
+
+## Sprint Retrospective Addendum (May 2 21:11 UTC)
+
+The n=4 attempt failed twice during launch:
+1. **First experiment** (`a417376d`, 17:02 UTC): bootstrapped successfully, but `openibd restart` to apply `MAX_ATOMIC_ARG=8` killed the public control net (mlx5_core also drives `eno12399`). Experiment terminated at 19:35 UTC.
+2. **Second experiment** (`af875a06`, 19:42 UTC): bootstrap-node.sh updated to write the modprobe.d entry BEFORE OFED loads, with `update-initramfs -u`. Bootstrap completed but `device_cap_flags` was still `0x00000000` because the option only takes effect on next boot. Issued soft reboot at 20:21 UTC; nodes never came back. Powercycle at 20:44 UTC also didn't help. Terminated at 21:04 UTC.
+
+**Falling back to n=2** (1 CN + 1 MN). This config worked reliably May 1-2, so we know the pipeline. The 24h plan deferred phases 1, 2, 4, 7 (multi-CN-only) to the **May 6 7-node reservation** (`8971e238`). On the n=2 reservation we'll run phases 3, 5, 6, 8 — variance reps, SMART-CXL/ROLEX-CXL ports + sweeps, high-thread CXL, and the long-rep variance run.
+
+**Lesson learned**: the modprobe-then-reboot path doesn't survive a double-reboot today. Better approach for May 6: include the modprobe option BEFORE the first OFED install (we now do), but also run the full bootstrap before any reboot, then test `device_cap_flags` — if zero, just accept it for read-only workloads (workload C/D/E don't actually need atomics; only A/B do). The atomic fix is only needed for workloads that use CAS heavily.
