@@ -12,102 +12,113 @@
 - Sprint plan: `construction/sprints/sprint-02-part-one-reproduce.md`
 - 5-method scope, 4 core figures + stretch, day-by-day timeline
 
-### CloudLab Infrastructure (Mar 8–Apr 7)
-- CloudLab REST API operational (`boss.emulab.net:43794`, `x-api-token` header)
+### CloudLab Infrastructure (Mar 8 – Apr 7)
+- CloudLab REST API operational (`boss.emulab.net:43794`, `x-api-token` header, JWT)
 - Profile `chime-r650-clemson-lan` with parameterized node count and hardware type
 - Setup scripts: `setup-r650.sh` (7-phase automated setup), `run-experiments.sh`, `pull-results.sh`
-- Automation: `generate-common-json.py`, `patch-cn-count.py`, `setup-checklist.md`, `day1-runbook.md`
 - `smoke_test.py`, `resilient_runner.py` with checkpoint resume
 
 ### r6525 Pre-Deadline Run (Mar 23–26)
-- 11x r6525 provisioned, 9 CN + 1 MN (node10 broken RDMA)
-- Experiments completed: fig_15b, fig_15a, fig_12, fig_14, extras
-- Results on non-paper-matched hardware (AMD EPYC vs Intel Xeon)
+- 11× r6525 provisioned, 9 CN + 1 MN
+- fig_15b, fig_15a, fig_12, fig_14 results on AMD EPYC (not paper-matched)
 
-### r650 RDMA Pipeline Validation (Mar 27–Apr 3)
-- Runs 1–4 on r650 Clemson: progressively debugged RDMA setup
-- Discovered internal LAN requirement (control net RDMA = quarantine)
-- Identified and validated RoCE config: `IB_DEV_NAME_IDX='2'`, `MLX_GID=3` (for VLAN)
-- VLAN setup via `sudo /usr/local/etc/emulab/rc/rc.ifconfig`
-- memcached.conf requires 2 lines (IP + port)
+### r650 RDMA Pipeline Validation (Mar 27 – Apr 3)
+- Runs 1–4 progressively debugged RDMA setup
+- Identified RoCE config: `IB_DEV_NAME_IDX='2'`, `MLX_GID=3`
+- Internal LAN over `vlan296` MTU 9000
 
-### r650 Data Collection — Run 7 (Apr 5–6)
-- 6x r650 Clemson (5 CN + 1 MN), 16h experiment
-- fig_15a: complete (6 methods × 5 workloads)
-- fig_15b: complete (5 methods × 4 workloads) — 36 min runtime
-- fig_12 YCSB C: complete (5 methods × 8 points)
-- fig_12 YCSB D: complete (5 methods × 8 points)
-- Lost ~10h to memcached.conf bug (missing port line)
+### r650 Data Collection — Run 7 / Run 8 (Apr 5–7)
+- 6× / 4× r650 Clemson, multi-CN setup
+- fig_15a, fig_15b, fig_12 C/D/E across 5 methods (CHIME, Sherman, SMART, ROLEX, SMART-SC)
+- Apr 27 1-CN-baseline RDMA sweep at high thread counts (`fig_12_*_sweep.jsonl`)
 
-### r650 Data Collection — Run 8 (Apr 6–7)
-- 4x r650 Clemson (3 CN + 1 MN), 20h experiment (16h + 4h extension)
-- fig_12 YCSB E: complete (5 methods × 6 points)
-- fig_12 YCSB LOAD: partial (CHIME + SMART done; Sherman crashes with RDMA assertion)
-- fig_12 YCSB A: completed on remote but NOT pulled before expiry
-- fig_12 YCSB B: partial (CHIME 5/8 pts), not pulled
-- Lost A results due to late pull scheduling (root of `feedback_pull_results_early.md`)
-
-### CXL Transport Layer (Apr 1–3, build-fixed Apr 21)
+### CXL Transport Layer (Apr 1 – May 1)
 - `include/CxlTransport.h` + `src/CxlTransport.cpp` — NUMA-emulated transport
 - `include/CxlDSM.h` + `src/CxlDSM.cpp` — drop-in DSM replacement
 - `DSM.h` gated with `#ifdef USE_CXL`
-- Feature spec: `llm/features/cxl-implementation.md` (status: IMPLEMENTED Phase 1)
-- **Build verified end-to-end in Docker** (`Dockerfile.cxl-preflight`, commit `e430d8d`) — 5 additional blockers fixed beyond `152b4e9`
+- Build verified end-to-end in Docker (`Dockerfile.cxl-preflight`)
+- **Single-line allocator-overlap bug fixed (commit `a3c9e87`, May 1):** `CxlTransport::alloc_offset_(define::kChunkSize)` reserves the first 16 MB so the allocator never collides with `root_ptr_ptr` at `kRootPointerStoreOffest = kChunkSize/2 = 8 MB`. Bug haunted three reservations.
 
-### Part One Deliverables
-- Part One progress report (`report/main.tex`)
-- Hugo site with GitHub Pages CI
-- Beamer presentation with VT branding and r650 results (`presentation/main.tex`, presented Apr 7–9)
+### CXL Runtime Data (May 1 – May 2)
+- `fig_12_cxl_sweep.jsonl` + `fig_12_cxl_de.jsonl` — 17 data points across C/D/E single-CN
+- `chime_cxl_may2_{c,d,e}.jsonl` — full reproducibility re-run on May 2 (within ~5 % of May 1)
+- `cxl_ablation.jsonl` — 6-variant ablation at T=16 / 32 (Sherman → +hopscotch → +vacancy → +metadata → +sibling → CHIME)
 
-### Final-Project Specification (Apr 21–22)
-- `llm/features/final-project.md` — SPECIFIED with 14 ACs (CXL eval + Part One closure + deliverables)
-- `report/main-partwo.tex` — Part Two report skeleton
-- Three-phase timeline: P1 hardware day, P2 analysis+stretch, P3 deliverable polish
+### Competitor Single-CN Comparison (May 2)
+- `smart_{c,d,e}_sweep.jsonl` — full SMART sweep on r650 1 CN + 1 MN
+- `sherman_{c,d,e}_sweep.jsonl` — full Sherman (CHIME source with features off)
+- `rolex_c_sweep.jsonl` — full ROLEX C; D/E crash documented
+- `sherman_cxl_{c,d,e}.jsonl` — Sherman-on-CXL via CHIME's transport
+- `chime_rdma_may2_{c,d,e}.jsonl` — same-day CHIME-RDMA reference for cross-day comparison
+
+### Findings Documented in Report (May 2)
+- **CXL allocator bug + fix** (§ "Resolution: May 1 reservation").
+- **Three-workload CXL evaluation**: workload-dependent (CXL wins C/D, loses E) — `fig12-rdma-vs-cxl.pdf`, `fig12-cxl-rdma-ratio.pdf`.
+- **Late-data: competitor methods on single-CN hardware** — `fig12-competitors.pdf`.
+- **ROLEX-D synonym-leaf assertion** — `Rolex.cpp:385`, single-CN scaling limit.
+- **Sherman-on-CXL**: separates transport-driven from feature-driven CXL benefit — `fig12-transport-method.pdf`.
+- **Cross-day RDMA variance + CXL reproducibility** — `fig12-cxl-reproducibility.pdf`.
+- **CXL fig_15a ablation: speculative read can hurt on CXL** — `fig15a-cxl-ablation.pdf`.
 
 ### Pre-Hardware Tooling (Apr 22–23)
 - `Dockerfile.cxl-preflight` — Ubuntu 20.04 amd64 reference CXL build environment
-- `Dockerfile.ycsb-gen` — YCSB workload generator with `2to3 -w` (deferred to cluster)
-- `exp/run_harness.py` + tests — debug-artifact capture on failure (8/8 tests pass)
-- `exp/fig_14_surrogate.py` + tests — single-point cache-consumption driver (5/5 tests pass)
-- `exp/plot_fig_12_three_way.py` + tests — multi-series plot helper (5/5 tests pass)
+- `exp/run_harness.py` + tests (8/8 pass) — debug-artifact capture on failure
+- `exp/fig_14_surrogate.py` + tests (5/5) — single-point cache-consumption driver
+- `exp/plot_fig_12_three_way.py` + tests (5/5) — multi-series plot helper
 - `construction/scripts/runbook-day1.md` — hardware-window playbook
 - `construction/scripts/smoke-gate.sh` — automated CXL go/no-go gate
-- `construction/design/sherman-load-crash-analysis.md` — Sherman baseline static analysis
 
-## Hardware Window Failures (Apr 22–26)
+### Control-Net Mitigation (May 2)
+After CloudLab admin email re: unusual control-network traffic on the May 1 reservation:
 
-- **Apr 22 reservation `43677ece`** (2×r650 Clemson, 8h): expired unused. Pre-hardware tooling overran the window.
-- **Apr 23 reservation `5565ec96`** (2×r650 Clemson, 8h): every `startExperiment` failed with "Resource reservation violation: 0 r650 available because of existing resource reservations to other projects or users." Window expired with no successful experiments.
-- **Apr 25 retry**: same failure mode against active multi-day reservations (UUIDs `8c36e934`, `cc0bf3c0`, spanning 4/20–4/25 and 4/21–4/26).
-- **Apr 26 retry**: same failure mode persists.
-- Indirect signal: `createReservation -n` dry-runs show r650 Clemson booked through Apr 27 — capacity exists, but the scheduler doesn't link it to CS620426SP.
-- `reservationStatus` CLI is broken server-side (`Undefined subroutine &main::DoStatus`) — cannot inspect reservation state to diagnose.
+- `script/control-net-guard.sh` — on-node sampler of `/sys/class/net/<iface>/statistics/{rx,tx}_bytes`. Aborts experiment at 500 MB cumulative public traffic.
+- `script/run-with-guard.sh` — wraps any `ycsb_test` invocation with the guard.
+- `script/cloudlab-status-watch.sh` — portal API status (no ssh polling).
+- `script/prep-experiment.sh` — 8-step idempotent post-provision setup; auto-launches the guard on every node.
+- `script/launch-experiment.sh` — creates an experiment from `chime-r650-clemson-lan`.
+- `script/autonomous-runner.sh` — cluster-side 24-hour 8-phase autonomous experiment driver.
+- `files/cloudlab-control-net-reply.md` — admin reply draft + Gmail draft to `portal-ops@cloudlab.us`.
 
-## In Progress
+### Final-Project Deliverables State (May 2)
+- `report/main-partwo.tex`: 34 pages, all major findings present, builds clean, bibliography resolves.
+- `presentation/main.tex`: 48 pages, includes CXL Runtime Results section (3 slides), Competitor Methods (2 slides), CXL fig_15a finding, Cross-day variance.
+- All sweep JSONL data committed under `exp/results/may2-competitors/` and `exp/results/rdma-2node-04271959/`.
+- 18 commits pushed to `origin/main` since Apr 28.
 
-- Awaiting reservation-detail fields (Project / Cluster / Type) from user's web UI to diagnose scheduler mismatch.
-- Drafted CloudLab support email at `files/cloudlab-support-email-draft.md` (not yet sent).
-- Part Two report skeleton `report/main-partwo.tex` waiting on data (or pivoting to "blocked by scheduler" narrative).
+## In Progress (May 2 17:00 UTC — May 3 17:00 UTC sprint)
 
-## Remaining (Hardware-Dependent)
+- Phase 0: experiment `chime-r650-may2` provisioning (status: `provisioning` at 17:02 UTC).
+- Heartbeat cron `*/29 * * * *` will be armed by the launch-retry cron once status=ready.
+- Cluster-side autonomous-runner.sh will drive phases 1–8 over the 24-hour window.
 
-- fig_12 YCSB A and B on r650 (need 2+ nodes, ~2h runtime)
-- fig_12 YCSB LOAD for Sherman/ROLEX/SMART-SC (or annotate Sherman as known-limit)
-- fig_14 cache-consumption (or use `fig_14_surrogate.py` single-point)
-- CXL smoke gate on dual-socket r650 (NUMA emulation)
-- CXL fig_12 sweep + single-node RDMA baseline + fig_15a/b ablation
-- Three-way RDMA-multi vs RDMA-single vs CXL comparison plot
-- Part Two report population
-- Final presentation
-- `v2.0-final` release tag before May 5
+## Remaining
+
+### Sprint phases pending (this 24h window)
+- Multi-CN (3 CN + 1 MN) data for CHIME / SMART / Sherman / ROLEX × C/D/E
+- Variance reps for CHIME-CXL T=16/32 × C/D/E × 5
+- **CXL port engineering for SMART and ROLEX** (Phase 4, Claude human-in-loop)
+- SMART-CXL + ROLEX-CXL sweeps (Phase 5)
+- T=96 / T=128 high-thread sweeps (Phase 6)
+- Workload A/B retry at 3 CN + 1 MN (Phase 7)
+- 30-rep variance run for cross-day claim (Phase 8)
+
+### Post-sprint (May 3 17:00 → May 5)
+- Integrate sprint findings into report and slides
+- Final polish on prose (parallel paper-writer Claude session)
+- `v2.0-final` release tag before May 5 presentation
+
+### Next reservation (May 6 → May 11, 7× r650)
+- Repeat similar matrix at higher CN counts if useful
+- Long-running stability tests
+- Extra CXL ablations not yet covered
 
 ## Known Issues
 
-- **CloudLab scheduler bug**: approved reservations not being matched to CS620426SP experiments. Three windows lost.
-- **`reservationStatus` server-side bug**: `Undefined subroutine &main::DoStatus` blocks CLI diagnostics.
-- **Sibling CXL ports deferred**: SMART/ROLEX/Marlin not ported. Post-hardware-day if at all.
-- **Sherman LOAD crash**: `Assertion 'k >= fence_keys.lowest' failed` (Tree.cpp:382) — baseline limitation, framed as report finding via static analysis (no fix attempt on cluster).
-- **YCSB 60M+ workload generation**: deferred to r650 (CloudLab Ubuntu has Python 2; Mac+Docker hit cascading Py2→Py3 issues).
-- **RDMA build not Docker-verifiable**: `ibv_exp_dct` is MLNX OFED userspace only.
+- **Cross-day RDMA variance (~2×)** at the same hardware class — root cause likely warm-vs-cold cache + NIC queue state. Documented as a finding rather than a bug.
+- **Sherman LOAD crash**: `Tree.cpp:382` fence-key invariant under split/borrow at single-CN. CHIME closes this race via SIBLING_BASED_VALIDATION + VACANCY_AWARE_LOCK. Static analysis in report.
+- **Sherman A/B at single-CN**: assertion at `Tree.cpp:1596`. Phase 7 of sprint will retry at 3 CN + 1 MN.
+- **ROLEX D/E at single-CN**: synonym-chain overflow at `Rolex.cpp:385`. Phase 2 of sprint will retry at 3 CN + 1 MN.
+- **CloudLab cross-experiment-boundary scheduler bug**: documented with five reproducible UUIDs; support ticket pending response.
+- **CloudLab control-net traffic alert** (May 1, resolved): mitigations now in repo.
 
-Last updated: 2026-04-26
+Last updated: 2026-05-02
