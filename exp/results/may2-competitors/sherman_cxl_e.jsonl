@@ -1,0 +1,5 @@
+{"method":"Sherman-CXL","workload":"e","threads":4,"peak_mops":0.064}
+{"method":"Sherman-CXL","workload":"e","threads":8,"peak_mops":0.310}
+{"method":"Sherman-CXL","workload":"e","threads":16,"peak_mops":0.479}
+{"method":"Sherman-CXL","workload":"e","threads":32,"peak_mops":1.608}
+{"method":"Sherman-CXL","workload":"e","threads":64,"peak_mops":1.999}

@@ -915,6 +915,17 @@ Assertion `k >= fence_keys.lowest' failed
   \item \textbf{ROLEX's training cost is real.} 60\,M pre-train keys $+$ epsilon-bounded model fitting, all serialized on the CN. Easy to miss in the paper's reporting; surfaced here as an operational consideration for learned indexes on disaggregated memory.
   \item \textbf{Methods cluster on a single CN.} Gap is at most $1.4\times$ on C, $1.3\times$ on D, $1.1\times$ on E. The paper's wider gaps appear at multi-CN scale --- consistent with coordination overhead amortizing differently as CN count grows.
 \end{itemize}
+\end{frame}
+
+\begin{frame}{Sherman-on-CXL: Isolating Transport from Features}
+\centering
+\includegraphics[height=0.65\textheight]{../report/figures/fig12-transport-method.pdf}
+\note{
+  \textbf{Key point:} Building Sherman with USE\_CXL=on (Sherman is just CHIME's source with all 5 features off) lets us separate the transport benefit from the feature benefit.\\
+  \textbf{Say:} Sherman is built from CHIME's source tree with all five feature flags compiled out, so it shares CHIME's CXL transport. The 2x2 chart isolates "what does CXL transport buy you" from "what do CHIME's features add on top." Pattern is consistent: CXL beats RDMA on C and D for both methods, loses on E for both methods. But CHIME's CXL-over-RDMA speedup is larger than Sherman's --- about 3.4x at 4 threads versus Sherman's 1.4x. Reason: CHIME issues more small reads per op (hopscotch, sibling, speculative), each of which benefits independently from CXL's lower latency. Sherman's leaner profile has less latency to recover.\\
+  \textbf{Transition:} Cleanest evidence yet that the CXL win is partly transport, partly features.\\
+  \textbf{Time:} 60s
+}
 \note{
   \textbf{Key point:} Three concrete findings from the new single-CN data, all of which connect back to the paper's larger-cluster claims.\\
   \textbf{Say:} First, the curve shapes match the paper at single-CN scale, just shifted down. Second, ROLEX's training-time overhead is significant and worth flagging --- we make it explicit here. Third, the method-to-method gap on one CN is at most 1.4-times on C; the paper's bigger gaps are at multi-CN scale, which is consistent with their coordination overhead claims.\\
