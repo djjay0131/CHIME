@@ -1,0 +1,6 @@
+{"method":"SMART","workload":"e","threads":4,"peak_mops":0.557}
+{"method":"SMART","workload":"e","threads":8,"peak_mops":1.022}
+{"method":"SMART","workload":"e","threads":16,"peak_mops":1.919}
+{"method":"SMART","workload":"e","threads":32,"peak_mops":2.864}
+{"method":"SMART","workload":"e","threads":48,"peak_mops":3.364}
+{"method":"SMART","workload":"e","threads":64,"peak_mops":3.939}

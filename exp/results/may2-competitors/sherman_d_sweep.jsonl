@@ -1,0 +1,6 @@
+{"method":"Sherman","workload":"d","threads":4,"peak_mops":1.375}
+{"method":"Sherman","workload":"d","threads":8,"peak_mops":2.647}
+{"method":"Sherman","workload":"d","threads":16,"peak_mops":5.169}
+{"method":"Sherman","workload":"d","threads":32,"peak_mops":9.159}
+{"method":"Sherman","workload":"d","threads":48,"peak_mops":11.269}
+{"method":"Sherman","workload":"d","threads":64,"peak_mops":12.002}

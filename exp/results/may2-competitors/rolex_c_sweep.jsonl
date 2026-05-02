@@ -1,0 +1,6 @@
+{"method":"ROLEX","workload":"c","threads":4,"peak_mops":1.365}
+{"method":"ROLEX","workload":"c","threads":8,"peak_mops":2.653}
+{"method":"ROLEX","workload":"c","threads":16,"peak_mops":4.967}
+{"method":"ROLEX","workload":"c","threads":32,"peak_mops":8.799}
+{"method":"ROLEX","workload":"c","threads":48,"peak_mops":11.513}
+{"method":"ROLEX","workload":"c","threads":64,"peak_mops":11.690}
