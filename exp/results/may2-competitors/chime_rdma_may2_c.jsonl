@@ -1,0 +1,6 @@
+{"method":"CHIME","workload":"c","threads":4,"peak_mops":1.473}
+{"method":"CHIME","workload":"c","threads":8,"peak_mops":2.772}
+{"method":"CHIME","workload":"c","threads":16,"peak_mops":5.431}
+{"method":"CHIME","workload":"c","threads":32,"peak_mops":9.984}
+{"method":"CHIME","workload":"c","threads":48,"peak_mops":12.076}
+{"method":"CHIME","workload":"c","threads":64,"peak_mops":12.685}

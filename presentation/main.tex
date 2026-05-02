@@ -922,9 +922,26 @@ Assertion `k >= fence_keys.lowest' failed
 \includegraphics[height=0.65\textheight]{../report/figures/fig12-transport-method.pdf}
 \note{
   \textbf{Key point:} Building Sherman with USE\_CXL=on (Sherman is just CHIME's source with all 5 features off) lets us separate the transport benefit from the feature benefit.\\
-  \textbf{Say:} Sherman is built from CHIME's source tree with all five feature flags compiled out, so it shares CHIME's CXL transport. The 2x2 chart isolates "what does CXL transport buy you" from "what do CHIME's features add on top." Pattern is consistent: CXL beats RDMA on C and D for both methods, loses on E for both methods. But CHIME's CXL-over-RDMA speedup is larger than Sherman's --- about 3.4x at 4 threads versus Sherman's 1.4x. Reason: CHIME issues more small reads per op (hopscotch, sibling, speculative), each of which benefits independently from CXL's lower latency. Sherman's leaner profile has less latency to recover.\\
-  \textbf{Transition:} Cleanest evidence yet that the CXL win is partly transport, partly features.\\
+  \textbf{Say:} Sherman is built from CHIME's source tree with all five feature flags compiled out, so it shares CHIME's CXL transport. The 2x2 chart isolates "what does CXL transport buy you" from "what do CHIME's features add on top." Pattern is consistent: CXL beats RDMA on C and D for both methods, loses badly on E for both methods. CXL gives Sherman about a 1.4x speedup on C at low threads, similar to CHIME's same-day CXL/RDMA ratio. So the CXL win on this hardware is mostly transport-driven --- the lower latency of NUMA-loop reads versus a 2-microsecond RDMA round trip --- and mostly independent of CHIME's feature stack on the workloads where CXL wins.\\
+  \textbf{Transition:} The bigger surprise was the cross-day RDMA variance.\\
   \textbf{Time:} 60s
+}
+\end{frame}
+
+\begin{frame}{Cross-Day RDMA Variance: Honest Caveat on the Speedup}
+\small
+\textbf{The same CHIME-RDMA build, run two reservations apart on the same hardware class, gives 2x different numbers}:
+\begin{itemize}
+  \item April 27 RDMA, 1\,CN $+$ 1\,MN: T=4 → 0.58 Mops/s, T=32 → 4.21
+  \item May 2 RDMA, same code, same hardware class, fresh reservation: T=4 → 1.47, T=32 → 9.98
+\end{itemize}
+\vspace{0.5em}
+\textbf{Implication for the CXL story.} Against the April baseline, CHIME-CXL looked $\sim 3\times$ faster than RDMA. Against the May baseline, the same CXL data is $\sim 1.0$--$1.4\times$ faster. \textbf{The workload-dependent direction holds (CXL wins on C/D, loses on E), but the magnitude of the win is smaller than the April reservation suggested}. We retain both baselines in the report for transparency.
+\note{
+  \textbf{Key point:} The CXL speedup we reported earlier was inflated by an under-performing April RDMA baseline. With the May same-day reference, the speedup is more like 1.0--1.4x.\\
+  \textbf{Say:} This is the honest caveat. The April CHIME-RDMA reference was much slower than the May reference --- two-times difference at low thread counts. The April run might have been on the cold-cache mode of the bimodal distribution we showed for the 16-thread variance reps. Either way, when we re-ran the same CHIME-RDMA code two reservations apart on the same hardware, we got different numbers. The CXL-over-RDMA ratio is therefore reference-dependent. The workload pattern --- CXL wins on read-heavy, loses on range scans --- is robust. The size of the CXL win on read-heavy is more modest than the April baseline suggested.\\
+  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
+  \textbf{Time:} 70s
 }
 \note{
   \textbf{Key point:} Three concrete findings from the new single-CN data, all of which connect back to the paper's larger-cluster claims.\\
