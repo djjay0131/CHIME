@@ -928,18 +928,12 @@ Assertion `k >= fence_keys.lowest' failed
 }
 \end{frame}
 
-\begin{frame}{Cross-Day RDMA Variance: Honest Caveat on the Speedup}
-\small
-\textbf{The same CHIME-RDMA build, run two reservations apart on the same hardware class, gives 2x different numbers}:
-\begin{itemize}
-  \item April 27 RDMA, 1\,CN $+$ 1\,MN: T=4 → 0.58 Mops/s, T=32 → 4.21
-  \item May 2 RDMA, same code, same hardware class, fresh reservation: T=4 → 1.47, T=32 → 9.98
-\end{itemize}
-\vspace{0.5em}
-\textbf{Implication for the CXL story.} Against the April baseline, CHIME-CXL looked $\sim 3\times$ faster than RDMA. Against the May baseline, the same CXL data is $\sim 1.0$--$1.4\times$ faster. \textbf{The workload-dependent direction holds (CXL wins on C/D, loses on E), but the magnitude of the win is smaller than the April reservation suggested}. We retain both baselines in the report for transparency.
+\begin{frame}{Cross-Day Reproducibility: CXL Stable, RDMA Bimodal}
+\centering
+\includegraphics[height=0.65\textheight]{../report/figures/fig12-cxl-reproducibility.pdf}
 \note{
-  \textbf{Key point:} The CXL speedup we reported earlier was inflated by an under-performing April RDMA baseline. With the May same-day reference, the speedup is more like 1.0--1.4x.\\
-  \textbf{Say:} This is the honest caveat. The April CHIME-RDMA reference was much slower than the May reference --- two-times difference at low thread counts. The April run might have been on the cold-cache mode of the bimodal distribution we showed for the 16-thread variance reps. Either way, when we re-ran the same CHIME-RDMA code two reservations apart on the same hardware, we got different numbers. The CXL-over-RDMA ratio is therefore reference-dependent. The workload pattern --- CXL wins on read-heavy, loses on range scans --- is robust. The size of the CXL win on read-heavy is more modest than the April baseline suggested.\\
+  \textbf{Key point:} The cleanest reproducibility finding from the project: CHIME-CXL re-runs to within five percent across days; CHIME-RDMA varies by up to two-times.\\
+  \textbf{Say:} Two re-runs on the same hardware. CHIME-CXL on May 1 versus May 2 reproduces within five percent on every workload. CHIME-RDMA on April 27 versus May 2 differs by up to two-times. The likely mechanism is the same warm-versus-cold cache bimodality we showed for the sixteen-thread variance reps. CXL has no such bimodality because there is no NIC-side queue to warm up. So the CXL/RDMA speedup ratio depends on which RDMA reference you use --- the April baseline gave a three-times speedup, the May baseline gives one-point-zero to one-point-four. Workload direction is robust; magnitude is reference-dependent. The reproducibility finding itself is the more interesting story: CXL is a more stable benchmark target than RDMA on shared cluster hardware.\\
   \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
   \textbf{Time:} 70s
 }
