@@ -77,3 +77,21 @@ The n=4 attempt failed twice during launch:
 **Falling back to n=2** (1 CN + 1 MN). This config worked reliably May 1-2, so we know the pipeline. The 24h plan deferred phases 1, 2, 4, 7 (multi-CN-only) to the **May 6 7-node reservation** (`8971e238`). On the n=2 reservation we'll run phases 3, 5, 6, 8 — variance reps, SMART-CXL/ROLEX-CXL ports + sweeps, high-thread CXL, and the long-rep variance run.
 
 **Lesson learned**: the modprobe-then-reboot path doesn't survive a double-reboot today. Better approach for May 6: include the modprobe option BEFORE the first OFED install (we now do), but also run the full bootstrap before any reboot, then test `device_cap_flags` — if zero, just accept it for read-only workloads (workload C/D/E don't actually need atomics; only A/B do). The atomic fix is only needed for workloads that use CAS heavily.
+
+## Final status (May 2 22:30 UTC) — sprint aborted
+
+Both n=4 (`af875a06`) and n=2 (`77421a96`) experiments became unreachable after the reboot needed to apply `MAX_ATOMIC_ARG=8`. Pattern: SSH up before reboot → soft reboot via portal-cli → SSH dies → does not come back within 25+ min. Powercycle didn't help either.
+
+Root cause confirmed via standalone CN run: `ycsb_test` on workload C dies with `Failed to create QP` because `device_cap_flags=0x00000000` (no atomic capability advertised). This is the exact same `errno 95 ENOTSUP` issue documented in our memory bank from prior reservations.
+
+The May 1 `prb-145800` experiment did NOT hit this dead-after-reboot pattern because we applied the fix via `openibd restart` over the still-connected SSH session, and that came back. Today we tried to AVOID `openibd restart` (because last time it killed `eno12399`) by writing the modprobe option pre-install and rebooting — but the reboot itself made the nodes unreachable. The bootstrap script's `update-initramfs -u` step is the most likely suspect; on `r650` Clemson stock images it appears to corrupt something about the boot path.
+
+**Strategy for May 6 (7-node reservation `8971e238`):**
+1. After OFED install, run `openibd restart` ONE TIME over the still-connected SSH session (the path that proved survivable May 1). Accept the brief eno12399 blip.
+2. Skip `update-initramfs -u` entirely.
+3. Verify `device_cap_flags` non-zero before any sweep launch.
+4. The May 1-2 single-CN data we already have (`exp/results/may2-competitors/`) is sufficient for every CXL claim in the report; the May 6 reservation is for multi-CN scaling, ROLEX-D-at-3-CN test, and any further variance reps.
+
+The autonomous-runner.sh, bootstrap-node.sh, control-net-guard.sh, run-with-guard.sh, and prep-experiment.sh are committed and ready. The launch sequence works through portal-cli `experiment create` → SSH probe → key distribution → bootstrap dispatch — only the post-OFED-install step needs revision (use `openibd restart`, not `reboot`).
+
+Heartbeat cron not started (would have nothing to pull).
