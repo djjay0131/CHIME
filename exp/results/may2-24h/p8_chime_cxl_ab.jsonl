@@ -1,0 +1,8 @@
+{"method":"CHIME-CXL","workload":"a","threads":4,"peak_mops":0,"err_tail":"thread 1: 2300000 load entries loaded. thread 0: 2300000 load entries loadeycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-c"}
+{"method":"CHIME-CXL","workload":"a","threads":8,"peak_mops":0,"err_tail":"loader ycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update(const GlobalAddres"}
+{"method":"CHIME-CXL","workload":"a","threads":16,"peak_mops":0,"err_tail":"ycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update(const GlobalAddress&, con"}
+{"method":"CHIME-CXL","workload":"a","threads":32,"peak_mops":0,"err_tail":"ycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update(const GlobalAddress&, con"}
+{"method":"CHIME-CXL","workload":"b","threads":4,"peak_mops":0,"err_tail":"thread 0: 2300000 load entries loadeycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_n"}
+{"method":"CHIME-CXL","workload":"b","threads":8,"peak_mops":0,"err_tail":"thread 4: 2500000 load enycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update("}
+{"method":"CHIME-CXL","workload":"b","threads":16,"peak_mops":0,"err_tail":"ycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update(const GlobalAddress&, con"}
+{"method":"CHIME-CXL","workload":"b","threads":32,"peak_mops":0,"err_tail":"ycsb_test: /proj/cs620426sp-PG0/djjay-CHIME-cxl/src/Tree.cpp:1596: bool Tree::leaf_node_update(const GlobalAddress&, con"}

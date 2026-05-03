@@ -1,0 +1,9 @@
+{"method":"CHIME-CXL","workload":"c","threads":24,"peak_mops":9.270}
+{"method":"CHIME-CXL","workload":"c","threads":40,"peak_mops":10.071}
+{"method":"CHIME-CXL","workload":"c","threads":56,"peak_mops":10.665}
+{"method":"CHIME-CXL","workload":"d","threads":24,"peak_mops":9.301}
+{"method":"CHIME-CXL","workload":"d","threads":40,"peak_mops":10.275}
+{"method":"CHIME-CXL","workload":"d","threads":56,"peak_mops":10.219}
+{"method":"CHIME-CXL","workload":"e","threads":24,"peak_mops":0.455}
+{"method":"CHIME-CXL","workload":"e","threads":40,"peak_mops":0}
+{"method":"CHIME-CXL","workload":"e","threads":56,"peak_mops":1.321}
