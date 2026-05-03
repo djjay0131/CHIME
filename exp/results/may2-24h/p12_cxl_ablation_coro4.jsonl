@@ -1,0 +1,12 @@
+{"variant":"sherman","workload":"c","threads":16,"coro":4,"peak_mops":7.340}
+{"variant":"sherman","workload":"c","threads":32,"coro":4,"peak_mops":10.352}
+{"variant":"hopscotch","workload":"c","threads":16,"coro":4,"peak_mops":7.824}
+{"variant":"hopscotch","workload":"c","threads":32,"coro":4,"peak_mops":10.471}
+{"variant":"vacancy","workload":"c","threads":16,"coro":4,"peak_mops":7.843}
+{"variant":"vacancy","workload":"c","threads":32,"coro":4,"peak_mops":10.377}
+{"variant":"metadata","workload":"c","threads":16,"coro":4,"peak_mops":8.017}
+{"variant":"metadata","workload":"c","threads":32,"coro":4,"peak_mops":9.791}
+{"variant":"sibling","workload":"c","threads":16,"coro":4,"peak_mops":8.039}
+{"variant":"sibling","workload":"c","threads":32,"coro":4,"peak_mops":10.335}
+{"variant":"chime","workload":"c","threads":16,"coro":4,"peak_mops":6.735}
+{"variant":"chime","workload":"c","threads":32,"coro":4,"peak_mops":10.413}

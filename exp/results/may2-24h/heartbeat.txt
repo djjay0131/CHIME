@@ -181,3 +181,41 @@
 [2026-05-03T06:11:20Z] uniform CHIME-CXL d T=16
 [2026-05-03T06:11:20Z] uniform CHIME-CXL d T=32
 [2026-05-03T06:11:20Z] uniform DONE
+[2026-05-03T06:34:55Z] sherman-cxl coro c T=16 C=1
+[2026-05-03T06:35:17Z] sherman-cxl coro c T=16 C=2
+[2026-05-03T06:35:39Z] sherman-cxl coro c T=16 C=4
+[2026-05-03T06:36:01Z] sherman-cxl coro c T=16 C=8
+[2026-05-03T06:36:23Z] sherman-cxl coro c T=32 C=1
+[2026-05-03T06:36:46Z] sherman-cxl coro c T=32 C=2
+[2026-05-03T06:37:08Z] sherman-cxl coro c T=32 C=4
+[2026-05-03T06:37:31Z] sherman-cxl coro c T=32 C=8
+[2026-05-03T06:37:53Z] sherman-cxl coro d T=16 C=1
+[2026-05-03T06:38:15Z] sherman-cxl coro d T=16 C=2
+[2026-05-03T06:38:37Z] sherman-cxl coro d T=16 C=4
+[2026-05-03T06:38:59Z] sherman-cxl coro d T=16 C=8
+[2026-05-03T06:39:21Z] sherman-cxl coro d T=32 C=1
+[2026-05-03T06:39:44Z] sherman-cxl coro d T=32 C=2
+[2026-05-03T06:40:06Z] sherman-cxl coro d T=32 C=4
+[2026-05-03T06:40:29Z] sherman-cxl coro d T=32 C=8
+[2026-05-03T06:40:52Z] sherman-cxl coro e T=16 C=1
+[2026-05-03T06:41:18Z] sherman-cxl coro e T=16 C=2
+[2026-05-03T06:41:44Z] sherman-cxl coro e T=16 C=4
+[2026-05-03T06:42:10Z] sherman-cxl coro e T=16 C=8
+[2026-05-03T06:42:37Z] sherman-cxl coro e T=32 C=1
+[2026-05-03T06:43:03Z] sherman-cxl coro e T=32 C=2
+[2026-05-03T06:43:29Z] sherman-cxl coro e T=32 C=4
+[2026-05-03T06:43:56Z] sherman-cxl coro e T=32 C=8
+[2026-05-03T06:44:23Z] sherman coro DONE
+[2026-05-03T06:44:23Z] abl coro4 sherman c T=16
+[2026-05-03T06:44:44Z] abl coro4 sherman c T=32
+[2026-05-03T06:45:07Z] abl coro4 hopscotch c T=16
+[2026-05-03T06:45:29Z] abl coro4 hopscotch c T=32
+[2026-05-03T06:45:52Z] abl coro4 vacancy c T=16
+[2026-05-03T06:46:14Z] abl coro4 vacancy c T=32
+[2026-05-03T06:46:37Z] abl coro4 metadata c T=16
+[2026-05-03T06:46:59Z] abl coro4 metadata c T=32
+[2026-05-03T06:47:22Z] abl coro4 sibling c T=16
+[2026-05-03T06:47:45Z] abl coro4 sibling c T=32
+[2026-05-03T06:48:08Z] abl coro4 chime c T=16
+[2026-05-03T06:48:30Z] abl coro4 chime c T=32
+[2026-05-03T06:48:53Z] cxl ablation coro4 DONE
