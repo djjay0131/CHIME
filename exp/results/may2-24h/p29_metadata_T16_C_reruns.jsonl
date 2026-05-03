@@ -1,0 +1,8 @@
+{"variant":"metadata","workload":"c","threads":16,"rep":1,"peak_mops":7.980}
+{"variant":"metadata","workload":"c","threads":16,"rep":2,"peak_mops":7.946}
+{"variant":"metadata","workload":"c","threads":16,"rep":3,"peak_mops":0}
+{"variant":"metadata","workload":"c","threads":16,"rep":4,"peak_mops":7.925}
+{"variant":"metadata","workload":"c","threads":16,"rep":5,"peak_mops":7.677}
+{"variant":"metadata","workload":"c","threads":16,"rep":6,"peak_mops":7.900}
+{"variant":"metadata","workload":"c","threads":16,"rep":7,"peak_mops":7.984}
+{"variant":"metadata","workload":"c","threads":16,"rep":8,"peak_mops":8.073}
