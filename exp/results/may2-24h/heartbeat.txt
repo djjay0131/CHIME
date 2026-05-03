@@ -1,0 +1,44 @@
+[2026-05-03T04:12:20Z] alive (results=1 files)
+[2026-05-03T04:12:20Z] var CHIME-CXL c T=16 rep=1
+[2026-05-03T04:12:42Z] var CHIME-CXL c T=16 rep=2
+[2026-05-03T04:13:05Z] var CHIME-CXL c T=16 rep=3
+[2026-05-03T04:13:20Z] alive (results=3 files)
+[2026-05-03T04:13:27Z] var CHIME-CXL c T=16 rep=4
+[2026-05-03T04:13:50Z] var CHIME-CXL c T=16 rep=5
+[2026-05-03T04:14:12Z] var CHIME-CXL c T=32 rep=1
+[2026-05-03T04:14:20Z] alive (results=3 files)
+[2026-05-03T04:14:35Z] var CHIME-CXL c T=32 rep=2
+[2026-05-03T04:14:58Z] var CHIME-CXL c T=32 rep=3
+[2026-05-03T04:15:20Z] alive (results=3 files)
+[2026-05-03T04:15:21Z] var CHIME-CXL c T=32 rep=4
+[2026-05-03T04:15:44Z] var CHIME-CXL c T=32 rep=5
+[2026-05-03T04:16:07Z] var CHIME-CXL d T=16 rep=1
+[2026-05-03T04:16:20Z] alive (results=3 files)
+[2026-05-03T04:16:29Z] var CHIME-CXL d T=16 rep=2
+[2026-05-03T04:16:52Z] var CHIME-CXL d T=16 rep=3
+[2026-05-03T04:17:14Z] var CHIME-CXL d T=16 rep=4
+[2026-05-03T04:17:20Z] alive (results=3 files)
+[2026-05-03T04:17:37Z] var CHIME-CXL d T=16 rep=5
+[2026-05-03T04:17:59Z] var CHIME-CXL d T=32 rep=1
+[2026-05-03T04:18:20Z] alive (results=3 files)
+[2026-05-03T04:18:22Z] var CHIME-CXL d T=32 rep=2
+[2026-05-03T04:18:45Z] var CHIME-CXL d T=32 rep=3
+[2026-05-03T04:19:08Z] var CHIME-CXL d T=32 rep=4
+[2026-05-03T04:19:20Z] alive (results=3 files)
+[2026-05-03T04:19:31Z] var CHIME-CXL d T=32 rep=5
+[2026-05-03T04:19:54Z] var CHIME-CXL e T=16 rep=1
+[2026-05-03T04:20:20Z] alive (results=3 files)
+[2026-05-03T04:20:21Z] var CHIME-CXL e T=16 rep=2
+[2026-05-03T04:20:49Z] var CHIME-CXL e T=16 rep=3
+[2026-05-03T04:21:16Z] var CHIME-CXL e T=16 rep=4
+[2026-05-03T04:21:20Z] alive (results=3 files)
+[2026-05-03T04:21:44Z] var CHIME-CXL e T=16 rep=5
+[2026-05-03T04:22:11Z] var CHIME-CXL e T=32 rep=1
+[2026-05-03T04:22:20Z] alive (results=3 files)
+[2026-05-03T04:22:39Z] var CHIME-CXL e T=32 rep=2
+[2026-05-03T04:23:06Z] var CHIME-CXL e T=32 rep=3
+[2026-05-03T04:23:20Z] alive (results=3 files)
+[2026-05-03T04:23:34Z] var CHIME-CXL e T=32 rep=4
+[2026-05-03T04:24:01Z] var CHIME-CXL e T=32 rep=5
+[2026-05-03T04:24:20Z] alive (results=3 files)
+[2026-05-03T04:24:29Z] DONE phases 3..3
