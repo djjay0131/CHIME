@@ -658,6 +658,17 @@ The single-CN comparison reinforces three findings. First, Sherman's pure-B$+$-t
 \label{fig:fig15a-cxl-ablation}
 \end{figure}
 
+\paragraph{Statistical confirmation (May 3 sprint, n $=$ 20--30 reps).} On a follow-on 14-hour single-CN sprint that the May 2 reservation kept alive, we collected variance reps for the speculative-read findings. The headline gaps are statistically rock-solid: on workload C at 16 threads, $+$sibling-CXL averaged $8.109$\,Mops/s with a standard deviation of $0.082$ across $n=20$ reps, while full CHIME-CXL averaged $6.731$ with a standard deviation of $0.044$. The gap is $1.38$\,Mops/s and the pooled standard error is $0.021$, so the gap is $\sim$\,$66\sigma$ --- more confidence than any standard significance bar would require. On workload E at 32 threads, Sherman-CXL averaged $1.532 \pm 0.056$ versus full CHIME-CXL at $1.079 \pm 0.037$ across $n=15$ each, giving a $0.45$\,Mops/s gap at $\sim$\,$26\sigma$. We also extended the single-CN ablation to all six variants across thread counts $4, 8, 16, 24, 32, 48$ on workload C and additionally workloads D and E (Figure~\ref{fig:fig15a-cxl-ablation-full}). The pattern holds across all three workloads: full CHIME-CXL is slower than $+$sibling-CXL at every thread count below $\sim$\,$32$ on C and D, and slower than even the no-features Sherman-CXL baseline at $T=4, 8$ on C; on E the gap widens to a $25$--$33\%$ range-scan slowdown that persists across all thread counts in our sweep. Coroutine count from $1$ to $32$ does not change the picture (within $1\%$ at $T=16$).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/fig15a-cxl-ablation-full.pdf}
+\caption{Full CXL ablation across workloads C, D, E and thread counts $4$--$48$ ($T$=$8$--$64$ on E), $1$\,CN $+$ $1$\,MN. The dashed red line is full CHIME-CXL ($+$Speculative); it sits below $+$Sibling-CXL across most of the sweep on C and D, and below $+$Sibling-CXL and even Sherman-CXL across the entire sweep on E. Speculative read is net-negative on CXL.}
+\label{fig:fig15a-cxl-ablation-full}
+\end{figure}
+
+\paragraph{Long-run steady-state stability of CXL.} A 180-second single-process run of CHIME-CXL at 16 threads on C reported $10$ throughput epochs spanning the post-warmup steady state at $6.667, 6.665, 6.672, 6.669, 6.669, 6.672, 6.669, 6.667$ Mops/s. The standard deviation across the post-warmup steady state is below $0.005$ Mops/s ($<$\,$0.1\%$). The same shape held at $T=32$ on C ($10.390$--$10.416$, $<$\,$0.3\%$) and on D at both thread counts. CXL's lack of NIC-side queue depth removes one of the two warmup transients we observe on RDMA. Combined with the cross-day reproducibility result earlier in this section, the implication for benchmarking practice is concrete: \emph{CXL evaluations need fewer reps than RDMA evaluations to clear the same statistical bar}, because CXL has neither the cross-day NIC-state variance nor the within-run NIC-warmup transient.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-transport-method.pdf}
