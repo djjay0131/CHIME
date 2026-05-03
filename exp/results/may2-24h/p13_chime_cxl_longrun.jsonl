@@ -1,0 +1,4 @@
+{"method":"CHIME-CXL","workload":"c","threads":16,"runtime_s":180,"n_epochs":10,"peak_mops":6.672,"epochs_csv":"1.454,5.883,6.667,6.665,6.672,6.669,6.669,6.672,6.669,6.667"}
+{"method":"CHIME-CXL","workload":"c","threads":32,"runtime_s":180,"n_epochs":10,"peak_mops":10.416,"epochs_csv":"2.072,9.761,10.402,10.409,10.416,10.401,10.391,10.392,10.393,10.390"}
+{"method":"CHIME-CXL","workload":"d","threads":16,"runtime_s":180,"n_epochs":10,"peak_mops":6.983,"epochs_csv":"1.636,5.970,6.975,6.980,6.980,6.983,6.981,6.980,6.979,6.978"}
+{"method":"CHIME-CXL","workload":"d","threads":32,"runtime_s":180,"n_epochs":10,"peak_mops":10.097,"epochs_csv":"2.054,9.455,10.097,10.077,10.088,10.082,10.087,10.082,10.086,10.080"}
