@@ -42,3 +42,25 @@
 [2026-05-03T04:24:01Z] var CHIME-CXL e T=32 rep=5
 [2026-05-03T04:24:20Z] alive (results=3 files)
 [2026-05-03T04:24:29Z] DONE phases 3..3
+[2026-05-03T04:34:57Z] alive (results=3 files)
+[2026-05-03T04:34:57Z] sweep_cxl CHIME c T=32
+[2026-05-03T04:35:19Z] sweep_cxl CHIME c T=64
+[2026-05-03T04:35:48Z] sweep_cxl CHIME c T=96
+[2026-05-03T04:35:57Z] alive (results=4 files)
+[2026-05-03T04:36:03Z] sweep_cxl CHIME c T=128
+[2026-05-03T04:36:19Z] sweep_3cn1mn CHIME c T=32
+[2026-05-03T04:36:34Z] sweep_3cn1mn CHIME c T=64
+[2026-05-03T04:36:49Z] sweep_3cn1mn CHIME c T=96
+[2026-05-03T04:36:57Z] alive (results=5 files)
+[2026-05-03T04:37:04Z] sweep_3cn1mn CHIME c T=128
+[2026-05-03T04:37:20Z] sweep_cxl CHIME d T=32
+[2026-05-03T04:37:42Z] sweep_cxl CHIME d T=64
+[2026-05-03T04:37:57Z] alive (results=6 files)
+[2026-05-03T04:38:11Z] sweep_cxl CHIME d T=96
+[2026-05-03T04:38:27Z] sweep_cxl CHIME d T=128
+[2026-05-03T04:38:42Z] sweep_3cn1mn CHIME d T=32
+[2026-05-03T04:38:57Z] alive (results=7 files)
+[2026-05-03T04:38:57Z] sweep_3cn1mn CHIME d T=64
+[2026-05-03T04:39:12Z] sweep_3cn1mn CHIME d T=96
+[2026-05-03T04:39:28Z] sweep_3cn1mn CHIME d T=128
+[2026-05-03T04:39:43Z] DONE phases 6..6

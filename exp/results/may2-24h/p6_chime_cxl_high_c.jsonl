@@ -1,0 +1,4 @@
+{"method":"CHIME-CXL","workload":"c","threads":32,"peak_mops":10.413}
+{"method":"CHIME-CXL","workload":"c","threads":64,"peak_mops":10.768}
+{"method":"CHIME-CXL","workload":"c","threads":96,"peak_mops":0}
+{"method":"CHIME-CXL","workload":"c","threads":128,"peak_mops":0}

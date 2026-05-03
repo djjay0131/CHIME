@@ -1,0 +1,4 @@
+{"method":"CHIME","workload":"d","threads":32,"cn_count":0,"peak_mops":0}
+{"method":"CHIME","workload":"d","threads":64,"cn_count":0,"peak_mops":0}
+{"method":"CHIME","workload":"d","threads":96,"cn_count":0,"peak_mops":0}
+{"method":"CHIME","workload":"d","threads":128,"cn_count":0,"peak_mops":0}

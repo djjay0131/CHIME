@@ -33,3 +33,24 @@
 [2026-05-03T04:24:29Z]   CHIME-CXL e T=32 rep=5 peak=1.045
 [2026-05-03T04:24:29Z] Phase 3 complete
 [2026-05-03T04:24:29Z] Autonomous runner finished phases 3..3
+[2026-05-03T04:34:57Z] Autonomous runner starting. Phases 6..6. Master=node2.chime-r650-may2.cs620426sp-PG0.clemson.cloudlab.us N=1
+[2026-05-03T04:34:57Z] Starting phase 6
+[2026-05-03T04:34:57Z] === Phase 6: high thread count CXL + 3 CN RDMA ===
+[2026-05-03T04:35:19Z]   CHIME-CXL c T=32 peak=10.413 Mops
+[2026-05-03T04:35:48Z]   CHIME-CXL c T=64 peak=10.768 Mops
+[2026-05-03T04:36:03Z]   CHIME-CXL c T=96 peak=0 Mops
+[2026-05-03T04:36:19Z]   CHIME-CXL c T=128 peak=0 Mops
+[2026-05-03T04:36:34Z]   CHIME c T=32 cn=0 peak=0 Mops
+[2026-05-03T04:36:49Z]   CHIME c T=64 cn=0 peak=0 Mops
+[2026-05-03T04:37:04Z]   CHIME c T=96 cn=0 peak=0 Mops
+[2026-05-03T04:37:20Z]   CHIME c T=128 cn=0 peak=0 Mops
+[2026-05-03T04:37:42Z]   CHIME-CXL d T=32 peak=9.881 Mops
+[2026-05-03T04:38:11Z]   CHIME-CXL d T=64 peak=10.714 Mops
+[2026-05-03T04:38:27Z]   CHIME-CXL d T=96 peak=0 Mops
+[2026-05-03T04:38:42Z]   CHIME-CXL d T=128 peak=0 Mops
+[2026-05-03T04:38:57Z]   CHIME d T=32 cn=0 peak=0 Mops
+[2026-05-03T04:39:12Z]   CHIME d T=64 cn=0 peak=0 Mops
+[2026-05-03T04:39:28Z]   CHIME d T=96 cn=0 peak=0 Mops
+[2026-05-03T04:39:43Z]   CHIME d T=128 cn=0 peak=0 Mops
+[2026-05-03T04:39:43Z] Phase 6 complete
+[2026-05-03T04:39:43Z] Autonomous runner finished phases 6..6
