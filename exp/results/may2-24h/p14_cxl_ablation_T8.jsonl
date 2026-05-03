@@ -1,0 +1,12 @@
+{"variant":"sherman","workload":"c","threads":8,"peak_mops":3.796}
+{"variant":"sherman","workload":"d","threads":8,"peak_mops":3.875}
+{"variant":"hopscotch","workload":"c","threads":8,"peak_mops":4.221}
+{"variant":"hopscotch","workload":"d","threads":8,"peak_mops":4.254}
+{"variant":"vacancy","workload":"c","threads":8,"peak_mops":4.255}
+{"variant":"vacancy","workload":"d","threads":8,"peak_mops":4.285}
+{"variant":"metadata","workload":"c","threads":8,"peak_mops":4.236}
+{"variant":"metadata","workload":"d","threads":8,"peak_mops":4.325}
+{"variant":"sibling","workload":"c","threads":8,"peak_mops":4.368}
+{"variant":"sibling","workload":"d","threads":8,"peak_mops":4.365}
+{"variant":"chime","workload":"c","threads":8,"peak_mops":3.539}
+{"variant":"chime","workload":"d","threads":8,"peak_mops":3.634}
