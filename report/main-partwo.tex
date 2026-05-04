@@ -663,9 +663,37 @@ The single-CN comparison reinforces three findings. First, Sherman's pure-B$+$-t
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig15a-cxl-ablation-full.pdf}
-\caption{Full CXL ablation across workloads C, D, E and thread counts $4$--$48$ ($T$=$8$--$64$ on E), $1$\,CN $+$ $1$\,MN. The dashed red line is full CHIME-CXL ($+$Speculative); it sits below $+$Sibling-CXL across most of the sweep on C and D, and below $+$Sibling-CXL and even Sherman-CXL across the entire sweep on E. Speculative read is net-negative on CXL.}
+\caption{Full CXL ablation across workloads C, D, E and thread counts $4$--$48$ ($T$=$8$--$64$ on E), $1$\,CN $+$ $1$\,MN. Five replications per cell; error bars $=$ $\pm 1$ standard deviation. The dashed red line is full CHIME-CXL ($+$Speculative); it sits below $+$Sibling-CXL across most of the sweep on C and D, and below $+$Sibling-CXL and even Sherman-CXL across the entire sweep on E. Speculative read is net-negative on CXL.}
 \label{fig:fig15a-cxl-ablation-full}
 \end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\caption{CXL ablation, paper-grade. Five replications per cell; mean throughput in Mops/s. Workload E numbers in italics. Bold entries highlight the speculative-read step's contribution: positive on RDMA in the published paper, but \emph{net-negative on CXL} at every thread count tested on E and at $T \le 16$ on C and D.}
+\label{tab:cxl-ablation-comprehensive}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+W $\backslash$ T & Sherman & $+$Hop & $+$Vac & $+$Meta & $+$Sib & \textbf{$+$Spec (CHIME)} \\
+\midrule
+C $T=8$  & 4.19 & 4.55 & 4.59 & 4.63 & 4.70 & \textbf{3.89} \\
+C $T=16$ & 7.94 & 8.39 & 8.47 & 8.60 & 8.69 & \textbf{7.23} \\
+C $T=32$ & 10.26 & 10.23 & 9.92 & 10.15 & 9.92 & \textbf{10.29} \\
+C $T=48$ & 10.67 & 10.82 & 10.67 & 10.60 & 10.71 & \textbf{10.44} \\
+\midrule
+D $T=8$  & 4.22 & 4.55 & 4.60 & 4.65 & 4.70 & \textbf{3.95} \\
+D $T=16$ & 8.04 & 8.48 & 8.58 & 8.60 & 8.64 & \textbf{7.38} \\
+D $T=32$ & 10.27 & 10.26 & 9.90 & 10.16 & 10.08 & \textbf{10.15} \\
+D $T=48$ & 10.45 & 10.76 & 10.60 & 10.70 & 10.62 & \textbf{10.54} \\
+\midrule
+\textit{E $T=8$}  & \textit{0.36} & \textit{0.30} & \textit{0.29} & \textit{0.31} & \textit{0.32} & \textbf{\textit{0.22}} \\
+\textit{E $T=16$} & \textit{0.52} & \textit{0.50} & \textit{0.49} & \textit{0.47} & \textit{0.48} & \textbf{\textit{0.37}} \\
+\textit{E $T=32$} & \textit{1.53} & \textit{1.45} & \textit{1.43} & \textit{1.36} & \textit{1.40} & \textbf{\textit{1.08}} \\
+\textit{E $T=48$} & \textit{1.89} & \textit{1.80} & \textit{1.68} & \textit{1.64} & \textit{1.72} & \textbf{\textit{1.35}} \\
+\textit{E $T=64$} & \textit{2.20} & \textit{2.08} & \textit{1.93} & \textit{1.87} & \textit{1.91} & \textbf{\textit{1.47}} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Long-run steady-state stability of CXL.} A 180-second single-process run of CHIME-CXL at 16 threads on C reported $10$ throughput epochs spanning the post-warmup steady state at $6.667, 6.665, 6.672, 6.669, 6.669, 6.672, 6.669, 6.667$ Mops/s. The standard deviation across the post-warmup steady state is below $0.005$ Mops/s ($<$\,$0.1\%$). The same shape held at $T=32$ on C ($10.390$--$10.416$, $<$\,$0.3\%$) and on D at both thread counts. CXL's lack of NIC-side queue depth removes one of the two warmup transients we observe on RDMA. Combined with the cross-day reproducibility result earlier in this section, the implication for benchmarking practice is concrete: \emph{CXL evaluations need fewer reps than RDMA evaluations to clear the same statistical bar}, because CXL has neither the cross-day NIC-state variance nor the within-run NIC-warmup transient.
 
