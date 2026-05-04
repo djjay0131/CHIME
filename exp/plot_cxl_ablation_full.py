@@ -35,9 +35,9 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     files = {
-        "c": base / "p15_cxl_ablation_full.jsonl",
-        "d": base / "p16_cxl_ablation_full_d.jsonl",
-        "e": base / "p17_cxl_ablation_full_e.jsonl",
+        "c": base / "p42_comprehensive_C.jsonl",
+        "d": base / "p43_comprehensive_D.jsonl",
+        "e": base / "p44_comprehensive_E.jsonl",
     }
 
     variants = ["sherman", "hopscotch", "vacancy", "metadata", "sibling", "chime"]
@@ -48,18 +48,23 @@ def main() -> None:
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
     titles = {"c": "YCSB C (read-only)", "d": "YCSB D (95% R / 5% I)", "e": "YCSB E (range scan)"}
 
+    from statistics import mean, stdev
     for ax, w in zip(axes, ["c", "d", "e"]):
         points = load_jsonl(files[w])
         for i, v in enumerate(variants):
-            pts = sorted([(p["threads"], p["peak_mops"]) for p in points
-                          if p.get("variant") == v and p.get("peak_mops", 0) > 0])
-            if not pts:
+            grouped: dict[int, list[float]] = {}
+            for p in points:
+                if p.get("variant") == v and p.get("peak_mops", 0) > 0:
+                    grouped.setdefault(p["threads"], []).append(p["peak_mops"])
+            if not grouped:
                 continue
-            xs = [p[0] for p in pts]
-            ys = [p[1] for p in pts]
-            ax.plot(xs, ys, label=labels[i], color=colors[i],
-                    marker=markers[i], linewidth=1.5, markersize=7,
-                    linestyle="-" if v != "chime" else "--")
+            xs = sorted(grouped)
+            ys = [mean(grouped[t]) for t in xs]
+            yerr = [stdev(grouped[t]) if len(grouped[t]) > 1 else 0 for t in xs]
+            ax.errorbar(xs, ys, yerr=yerr, label=labels[i], color=colors[i],
+                        marker=markers[i], linewidth=1.5, markersize=7,
+                        linestyle="-" if v != "chime" else "--",
+                        capsize=3, capthick=1.0)
         ax.set_xlabel("Threads", fontsize=11)
         ax.set_ylabel("Peak Throughput (Mops/s)", fontsize=11)
         ax.set_xscale("log", base=2)
