@@ -87,17 +87,21 @@
 
 \maketitle
 \note{
-  \textbf{Key point:} Introduction.\\
-  \textbf{Say:} Good morning, I'm Jason Cusati, and this is my final project
-  for CS 6204. The talk has two contributions on it. First, an
-  agent-orchestrated reproduction pipeline I built on CloudLab to drive
-  the experiments---and three concrete CloudLab API additions inferred from
-  where the agent approach broke. Second, the CHIME case study we ran under
-  that pipeline: an SOSP '24 disaggregated-memory index reproduced and ported
-  to CXL. Let me start with what CHIME is, then describe the orchestration
-  layer, then the results.\\
+  \textbf{Key point:} Introduction (open with humor; set up the two-contribution split).\\
+  \textbf{Say:} Good morning, I'm Jason Cusati. Quick story before I start.
+  Between April 22 and 26, I held four approved CloudLab reservations.
+  None of them ever bound to an experiment. Six days of \texttt{0
+  available because of existing resource reservations to other projects
+  or users} --- the other project was, of course, mine. So I'm here today
+  to thank CloudLab for accidentally inventing the most reliable
+  denial-of-service against my own approved reservations. \emph{(beat)}
+  That's the second contribution of this talk. The first is the one I
+  actually planned: an agent-orchestrated reproduction pipeline on
+  CloudLab, with CHIME, the SOSP 2024 paper, as the case study. Let me
+  start with what CHIME is, then the orchestration layer, then the
+  results.\\
   \textbf{Transition:} Let's start with the problem CHIME solves.\\
-  \textbf{Time:} 30s
+  \textbf{Time:} 35s
 }
 
 
@@ -575,40 +579,122 @@ Assertion `k >= fence_keys.lowest' failed
   YCSB-C ran clean to ten epochs at 0.6 megaops per second. The bug is
   found because the orchestration captured the failure --- not because
   I was at the keyboard during the crash.\\
-  \textbf{Transition:} Three takeaways.\\
+  \textbf{Transition:} Concrete wins from the orchestration.\\
   \textbf{Time:} 50s
 }
 \end{frame}
 
-% Slide 25 — Key Takeaways (rewritten by reframe spec to lead with orchestration)
+% Slide — Wins from agent orchestration (CUT-HERE-IF-SHORT, optional buffer)
+% CUT-HERE-IF-SHORT  (drop cleanly if rehearsal > 13:00; jump straight to Key Takeaways)
+\begin{frame}{What the Orchestration Actually Got Us}
+\centering
+\begin{tikzpicture}[
+  win/.style={draw, rounded corners=4pt, minimum width=4.6cm,
+              minimum height=1.6cm, align=center, font=\small,
+              text width=4.4cm, fill=mGreen!12, draw=mGreen, inner sep=4pt},
+]
+  \node[win] (a) at (-3.6,  1.2) {\textbf{24-hr autonomous sweep}\\\scriptsize 9 phases, no human in chair};
+  \node[win] (b) at ( 3.6,  1.2) {\textbf{Overnight monitoring}\\\scriptsize 29-min cadence, prompt-cache warm};
+  \node[win] (c) at (-3.6, -1.0) {\textbf{Crash trace into NFS}\\\scriptsize captured the one-line allocator bug};
+  \node[win] (d) at ( 3.6, -1.0) {\textbf{Spec chain across pivots}\\\scriptsize survived 3 reality changes};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Concrete value the agent layer delivered.\\
+  \textbf{Say:} Four wins worth naming. First, a 24-hour autonomous
+  sweep on May 2 --- nine phases, no human in the chair. Second,
+  overnight monitoring on a twenty-nine-minute cadence, kept under
+  the prompt-cache window so each wakeup was cheap. Third, the
+  cluster-side runner wrote the crash trace into NFS, which is how
+  the one-line allocator bug got found offline. And fourth, the spec
+  chain --- four feature specs across three reality pivots --- held
+  the project together when the plan changed twice. None of those
+  required me to be awake at the right moment.\\
+  \textbf{Transition:} The flip side --- where the approach broke.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+% Slide — Limitations of agent orchestration (CUT-HERE-IF-SHORT, optional buffer)
+% CUT-HERE-IF-SHORT  (drop cleanly if rehearsal > 13:00; jump straight to Key Takeaways)
+\begin{frame}{What the Orchestration Could Not Do}
+\centering
+\begin{tikzpicture}[
+  lim/.style={draw, rounded corners=4pt, minimum width=4.6cm,
+              minimum height=1.6cm, align=center, font=\small,
+              text width=4.4cm, fill=mRed!10, draw=mRed, inner sep=4pt},
+]
+  \node[lim] (a) at (-3.6,  1.2) {\textbf{Bridge PEM/JWT split}\\\scriptsize web UI is browser-only};
+  \node[lim] (b) at ( 3.6,  1.2) {\textbf{Replace human judgment}\\\scriptsize reservations, force-pushes, triage};
+  \node[lim] (c) at (-3.6, -1.0) {\textbf{Diagnose server-side bugs}\\\scriptsize broken \texttt{reservationStatus} blocks all};
+  \node[lim] (d) at ( 3.6, -1.0) {\textbf{Prove productivity claims}\\\scriptsize no human-only baseline};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Honest limits of the approach.\\
+  \textbf{Say:} Four honest limits. First, the PEM-versus-JWT
+  authentication split: the web UI is browser-only, no agent can
+  bridge it without a real browser session. Second, irreversible
+  decisions still went through me --- reservation requests, force
+  pushes, control-net quarantine triage. Third, server-side bugs
+  like the broken \texttt{reservationStatus} block automation
+  completely, with no client-side workaround. And fourth, I have
+  no controlled human-only baseline, so I cannot defend any
+  quantitative productivity claim.\\
+  \textbf{Transition:} Three closing points.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+% Slide — Key Takeaways (Zen rewrite: short punchy lines, prose in note)
 \begin{frame}{Key Takeaways}
 \centering
 \begin{tikzpicture}[
-  item/.style={font=\small, anchor=west, text width=10.5cm},
+  item/.style={font=\Large, anchor=west, text width=11cm},
+  num/.style={font=\Huge\bfseries, text=myRed},
 ]
-  \node[item] at (-5.3, 2.2)   {{\color{myRed}\textbf{1}}~~A persona-driven workflow with a memory-bank substrate \emph{can} drive a multi-method reproduction-and-port study at single-PhD-student scale.};
-  \node[item] at (-5.3, 0.7)   {{\color{myRed}\textbf{2}}~~The control-surface gaps on a shared academic testbed are themselves the contribution: three concrete CloudLab API additions, each independently sufficient to surface root cause inside the first failed window.};
-  \node[item] at (-5.3,-0.8)   {{\color{myRed}\textbf{3}}~~CHIME case study: hybrid B+/hopscotch reproduction trends match the paper; Sherman's LOAD crash empirically proves CHIME's techniques are jointly necessary for correctness; CXL transport wins on read-heavy workloads, loses on range scans, and is more reproducible across days than RDMA.};
+  \node[num]  at (-6.0, 2.0) {1};
+  \node[item] at (-5.0, 2.0) {Agent substrate works at solo-PhD scale};
+  \node[num]  at (-6.0, 0.4) {2};
+  \node[item] at (-5.0, 0.4) {Three CloudLab API fixes --- each enough};
+  \node[num]  at (-6.0,-1.2) {3};
+  \node[item] at (-5.0,-1.2) {CXL: reproducible, workload-dependent};
 \end{tikzpicture}
 \note{
   \textbf{Key point:} Three closing points, leading with orchestration.\\
-  \textbf{Say:} Three takeaways. First, a persona-driven workflow with a
-  memory-bank substrate---not a self-orchestrating fleet, but a substrate
-  that survives session boundaries---can drive a multi-method
-  reproduction-and-port study at single-PhD-student scale. Second, the
-  control-surface gaps on a shared academic testbed like CloudLab are
-  themselves the contribution: three concrete API additions inferred from
-  where the agent approach broke, each individually sufficient to surface
-  root cause inside the first failed reservation window. Third, on the
-  CHIME case study itself: hybrid B+/hopscotch reproduction trends match
-  the paper; Sherman's LOAD crash empirically proves CHIME's techniques
-  are jointly necessary for correctness, not just throughput; and CXL
-  transport wins on read-heavy workloads, loses on range scans, and is
-  more reproducible across days than RDMA. That's the project.\\
-  \textbf{Transition:} Thank you.\\
-  \textbf{Time:} 50s
+  \textbf{Say:} Three takeaways. First, the agent substrate ---
+  persona-driven, memory-bank-anchored, not self-orchestrating ---
+  works at solo-PhD scale. Second, the control-surface gaps on a
+  shared academic testbed are themselves the contribution: three
+  CloudLab API fixes, each independently sufficient. Third, on
+  CHIME itself: reproduction trends match the paper, Sherman's LOAD
+  crash proves the techniques are jointly necessary for correctness,
+  and the CXL win is workload-dependent and more reproducible across
+  days than RDMA.\\
+  \textbf{Transition:} Wins, limits, and questions follow.\\
+  \textbf{Time:} 45s
 }
 \end{frame}
+
+% Slide — Questions (last spoken slide; thanks + open floor)
+{
+\setbeamercolor{background canvas}{bg=myRed}
+\begin{frame}[plain]
+\vspace*{\fill}
+\begin{center}
+{\color{white}\Huge\bfseries Questions?}\\[1.2em]
+{\color{white}\large \textit{Thanks for listening.}}
+\end{center}
+\vspace*{\fill}
+\note{
+  \textbf{Key point:} Open floor; references reachable in backup deck.\\
+  \textbf{Say:} Thank you. Happy to take questions on any layer of the
+  pipeline, on the CHIME findings, or on the CloudLab postmortem ---
+  the backup deck has the timeline, the four-method comparison, and
+  the full citations if anything needs follow-up.\\
+  \textbf{Transition:} ---\\
+  \textbf{Time:} remainder
+}
+\end{frame}
+}
 
 % ============================================================
 % Optional appendix: included only when \WITHBACKUP is defined.
