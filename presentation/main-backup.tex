@@ -1,0 +1,5 @@
+% main-backup.tex — wrapper that builds the full deck (spoken + appendix).
+% Sets \WITHBACKUP so main.tex \inputs backup-content.tex with the appendix
+% block. Build via `make backup`; produces main-backup.pdf.
+\def\WITHBACKUP{}
+\input{main}

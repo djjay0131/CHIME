@@ -66,6 +66,12 @@ jobs:
           root_file: main-notes.tex
           working_directory: presentation
 
+      - name: Build final presentation PDF (full deck with backup slides)
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main-backup.tex
+          working_directory: presentation
+
       - name: Copy PDFs into Hugo static dir
         run: |
           mkdir -p site/static/pdfs
@@ -77,10 +83,12 @@ jobs:
           cp report/main-partwo.pdf site/static/pdfs/final-report.pdf
           # Progress presentation (Apr 9, history)
           cp presentation/main-v2.pdf site/static/pdfs/presentation.pdf
-          # Final presentation (May 5 deliverable) — audience view
+          # Final presentation (May 5 deliverable) — audience view (16 slides)
           cp presentation/main.pdf site/static/pdfs/final-presentation.pdf
           # Final presentation (May 5 deliverable) — speaker view (slides + notes)
           cp presentation/main-notes.pdf site/static/pdfs/final-presentation-notes.pdf
+          # Final presentation (May 5 deliverable) — full deck with Q&A backup (54 pages)
+          cp presentation/main-backup.pdf site/static/pdfs/final-presentation-backup.pdf
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3

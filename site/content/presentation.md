@@ -7,12 +7,13 @@ subtitle: "Final Project Presentation, May 5, 2026"
 
 **Downloads:**
 
-- <a href="/CHIME/pdfs/final-presentation.pdf">final-presentation.pdf</a> — audience view (slides only)
+- <a href="/CHIME/pdfs/final-presentation.pdf">final-presentation.pdf</a> — audience view, **16 slides** for the 13-minute talk
 - <a href="/CHIME/pdfs/final-presentation-notes.pdf">final-presentation-notes.pdf</a> — speaker view (slides + presenter notes side-by-side)
+- <a href="/CHIME/pdfs/final-presentation-backup.pdf">final-presentation-backup.pdf</a> — full deck with Q&A backup slides (54 pages, includes the 16 spoken slides plus 38 backup slides for citation lookups during Q&A)
 
 {{< pdf "/pdfs/final-presentation.pdf" >}}
 
-The final-project presentation is reframed around agent-orchestrated reproduction on CloudLab as the contribution, with CHIME serving as the case study. The arc: setup, the three-layer agent pipeline (persona-driven workflow, programmatic CloudLab control surface, autonomous cluster-side runner), Sherman LOAD stress finding, CXL findings (workload-dependent CXL win, cross-day reproducibility, speculative-read-hurts-on-CXL ablation), the misleading scheduler error, three concrete CloudLab API additions that would each independently have unblocked the evaluation, and a closing slide on the one-line allocator fix that the orchestration captured into NFS for offline triage.
+The final-project presentation is reframed around agent-orchestrated reproduction on CloudLab as the contribution, with CHIME serving as the case study. The 16-slide arc: title, two-slide CHIME paper introduction, project setup (CloudLab configuration + methods compared), four-slide agent-orchestrated pipeline (three-layer overview, persona-driven workflow, CloudLab control surface, autonomous runner + ORNL XLOOP'25 differentiation), Sherman LOAD stress finding, two CXL results (workload-dependent CXL win, cross-day reproducibility), two-slide postmortem (misleading scheduler error, three concrete CloudLab API additions), and two closing slides (one-line allocator fix that the orchestration surfaced + key takeaways).
 
 ---
 

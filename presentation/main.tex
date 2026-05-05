@@ -103,6 +103,48 @@
 
 
 % ============================================================
+% SECTION 1.5: CHIME Paper Introduction (2 spoken slides — required by professor)
+% ============================================================
+
+\section{CHIME Paper}
+
+% Slide — The trade-off
+\begin{frame}{Disaggregated Memory Indexes}
+\centering
+\includegraphics[height=0.82\textheight]{diagrams/tradeoff.pdf}
+\note{
+  \textbf{Key point:} DM range indexes face a cache vs read-amp trade-off.\\
+  \textbf{Say:} CHIME, SOSP 2024 by Luo and colleagues, is a hybrid index
+  for disaggregated memory --- a setting where compute and memory are
+  separated over a network fabric. Range indexes there face a fundamental
+  trade-off: B+ trees cache well at the compute side but need multiple
+  round trips per lookup; hash indexes finish in one round trip but
+  consume huge cache. CHIME breaks this trade-off.\\
+  \textbf{Transition:} Here is how it does that.\\
+  \textbf{Time:} 40s
+}
+\end{frame}
+
+% Slide — CHIME's hybrid structure
+\begin{frame}{CHIME: Hybrid B$^+$ Tree $+$ Hopscotch Leaves}
+\centering
+\includegraphics[height=0.78\textheight]{diagrams/hybrid-structure.pdf}
+\note{
+  \textbf{Key point:} Hybrid = B+ tree internal nodes + hopscotch-hashed leaves.\\
+  \textbf{Say:} CHIME keeps B+ tree internal nodes for structure and for
+  range queries, but replaces the sorted leaves with hopscotch hashing.
+  Internal nodes cache well because there are few of them. Leaves resolve
+  keys in one round trip instead of a binary search. Three additional
+  techniques --- optimistic synchronization, access-aggregated metadata,
+  and hotness-aware speculative read --- make the hybrid practical at
+  scale. The paper claims two-to-five-point-six-times higher throughput
+  than the next-best baseline on read-heavy workloads.\\
+  \textbf{Transition:} Now to our project setup.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+% ============================================================
 % SECTION 2: Experimental Setup (2 spoken slides)
 % ============================================================
 
@@ -149,7 +191,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
   index. SMART-SC is SMART with sufficient cache---the upper bound
   for cache-heavy approaches.\\
   \textbf{Transition:} What did we measure?\\
-  \textbf{Time:} 45s
+  \textbf{Time:} 35s
 }
 \end{frame}
 
@@ -160,6 +202,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 
 \section{Approach: Agent-Orchestrated Pipeline}
 
+% CUT-HERE-IF-SHORT  (overview slide — drop cleanly if rehearsal > 13:00; jump from setup to Layer 1)
 \begin{frame}{Three Layers of the Pipeline}
 \centering
 \begin{tikzpicture}[
@@ -332,7 +375,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
   scale versus a single PhD student. Their paper is a success story;
   this is a negative-result analysis.\\
   \textbf{Transition:} Now the case study --- starting with what Sherman tells us.\\
-  \textbf{Time:} 60s
+  \textbf{Time:} 50s
 }
 \end{frame}
 
@@ -367,7 +410,7 @@ Assertion `k >= fence_keys.lowest' failed
   proof CHIME's techniques are jointly necessary for correctness, not
   just throughput.\\
   \textbf{Transition:} Now CXL --- where transport changes which features pay off.\\
-  \textbf{Time:} 50s
+  \textbf{Time:} 40s
 }
 \end{frame}
 
@@ -396,21 +439,12 @@ Assertion `k >= fence_keys.lowest' failed
   \textbf{Key point:} The cleanest reproducibility finding from the project: CHIME-CXL re-runs to within five percent across days; CHIME-RDMA varies by up to two-times.\\
   \textbf{Say:} Two re-runs on the same hardware. CHIME-CXL on May 1 versus May 2 reproduces within five percent on every workload. CHIME-RDMA on April 27 versus May 2 differs by up to two-times. The likely mechanism is the same warm-versus-cold cache bimodality we showed for the sixteen-thread variance reps. CXL has no such bimodality because there is no NIC-side queue to warm up. So the CXL/RDMA speedup ratio depends on which RDMA reference you use --- the April baseline gave a three-times speedup, the May baseline gives one-point-zero to one-point-four. Workload direction is robust; magnitude is reference-dependent. The reproducibility finding itself is the more interesting story: CXL is a more stable benchmark target than RDMA on shared cluster hardware.\\
   \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
-  \textbf{Time:} 50s
+  \textbf{Time:} 40s
 }
 \end{frame}
 
-% CUT-HERE-IF-SHORT  (slide 11 — drop cleanly if rehearsal > 13:00)
-\begin{frame}{CXL fig\_15a: Speculative Read Can Hurt on CXL}
-\centering
-\includegraphics[height=0.65\textheight]{../report/figures/fig15a-cxl-ablation.pdf}
-\note{
-  \textbf{Key point:} The optimization stack that maximizes RDMA throughput is not transport-independent. Speculative read --- the last bar in CHIME's RDMA fig\_15a --- can be NEGATIVE-value on CXL.\\
-  \textbf{Say:} CXL fig\_15a on workload C, 16 and 32 threads. Full CHIME-CXL --- the rightmost bar --- is SLOWER than +Sibling at 16 threads. About 6.79 versus 8.01 Mops per second. At 32 threads CHIME-CXL barely edges +Sibling. Compare to the paper's RDMA fig\_15a where speculative read consistently adds a small positive delta at every thread count. The mechanism that makes speculative read worthwhile on RDMA --- starting an extra read in parallel to hide the round-trip --- has no payoff on a synchronous CXL transport. The second read just serializes with the first. Implication: a CXL-native CHIME successor would gain more from DISABLING speculative read than from keeping it. The optimization stack is transport-specific.\\
-  \textbf{Transition:} The reproducibility finding is the cleanest data point we have.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
+% (CXL fig_15a slide moved to backup-content.tex / Backup: Additional Runtime Data
+%  per the May-4 evening tightening — kept reachable for Q&A but not in 13-min arc.)
 
 
 % ============================================================
@@ -576,895 +610,16 @@ Assertion `k >= fence_keys.lowest' failed
 }
 \end{frame}
 
-
 % ============================================================
-% APPENDIX BEGINS — frames after this are backup / Q&A material
-% Suppress the section-navigation headline for appendix slides so the
-% nav bar doesn't overflow with backup section names.
+% Optional appendix: included only when \WITHBACKUP is defined.
+% Build via `make backup` to produce main-backup.pdf with all frames;
+% the default `make` produces a spoken-only main.pdf.
 % ============================================================
 
-\appendix
-\setbeamertemplate{headline}{}
-
-\section{Backup: Paper Overview}
-
-% Slide 2 — The Problem
-\begin{frame}{Disaggregated Memory Indexes}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/tradeoff.pdf}
-\note{
-  \textbf{Key point:} DM range indexes face a cache vs read-amp trade-off.\\
-  \textbf{Say:} Disaggregated memory separates compute and memory over
-  a network. Range indexes on DM face a fundamental trade-off: B+ trees
-  cache well but need multiple round trips per lookup, while hash indexes
-  are fast but consume huge cache. CHIME breaks this trade-off.\\
-  \textbf{Transition:} Here's how CHIME does it.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 3 — The Insight
-\begin{frame}{CHIME: Hybrid Structure}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/hybrid-structure.pdf}
-\note{
-  \textbf{Key point:} Hybrid = tree structure + hash leaves.\\
-  \textbf{Say:} CHIME keeps B+ tree internal nodes for structure
-  and range query support, but replaces sorted leaves with
-  hopscotch hashing. Internal nodes cache well because there
-  are few of them. Leaves use hashing to find keys in one
-  round trip instead of binary search.\\
-  \textbf{Transition:} Three specific techniques make this work.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 4 — Three Techniques
-\begin{frame}{Three Key Techniques}
-\centering
-\begin{tikzpicture}[
-  card/.style={draw=mGray!50, rounded corners=4pt, minimum width=3.5cm,
-               minimum height=2cm, align=center, font=\small},
-]
-  \node[card] (t1) at (-5,0) {
-    {\Large\color{mTeal} \textbf{1}}\\[0.4em]
-    Three-level\\optimistic sync
-  };
-  \node[card] (t2) at (0,0) {
-    {\Large\color{mTeal} \textbf{2}}\\[0.4em]
-    Access-aggregated\\metadata
-  };
-  \node[card] (t3) at (5,0) {
-    {\Large\color{mTeal} \textbf{3}}\\[0.4em]
-    Hotness-aware\\speculative read
-  };
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Three techniques enable the hybrid design.\\
-  \textbf{Say:} Three techniques make this work. First, three-level
-  optimistic synchronization reuses hopscotch bitmaps for fine-grained
-  concurrency---no global locks. Second, vacancy bitmap piggybacking
-  and metadata replication reduce round trips for metadata. Third,
-  a hotspot buffer shortcuts reads for frequently accessed neighborhoods.\\
-  \textbf{Transition:} What does this achieve?\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% Slide — CHIME's Five Techniques (detailed)
-\begin{frame}{CHIME's Five Techniques (CMake Flags)}
-\small Each technique adds an RDMA-amortizing optimization on top of a hopscotch-leaf B+~tree:
-\vspace{0.3em}
-\begin{center}
-\begin{tabular}{@{}lp{8.2cm}@{}}
-\toprule
-\textbf{CMake Flag} & \textbf{What It Does} \\
-\midrule
-\texttt{HOPSCOTCH\_LEAF\_NODE} & Hash-based leaf nodes; finds key in 1 RTT instead of binary-search \\
-\texttt{VACANCY\_AWARE\_LOCK}  & Lock word piggybacks vacancy bitmap; insert sees lock + free slot in one read \\
-\texttt{METADATA\_REPLICATION} & Per-segment replicated metadata; saves 1 RTT per leaf access \\
-\texttt{SIBLING\_BASED\_VALIDATION} & Sibling fence-key check on every read; catches stale-cache without re-read \\
-\texttt{SPECULATIVE\_READ}     & Hotspot buffer; warm keys shortcut neighborhood scan \\
-\bottomrule
-\end{tabular}
-\end{center}
-\vspace{0.5em}
-{\small The paper's fig\_15a evaluates these by toggling them \emph{cumulatively} on top of a Sherman baseline.}
-\note{
-  \textbf{Key point:} The 5 specific features that the paper ablates.\\
-  \textbf{Say:} The paper isolates five techniques. Hopscotch leaves are the
-  structural change — hash-based leaves replace sorted B+ leaves. The other
-  four are RDMA optimizations: vacancy-aware lock piggybacks the vacancy
-  bitmap on the lock word so an insert's lock-acquisition read also tells
-  it which slot is free. Metadata replication trades a small per-segment
-  size for a saved RTT on every leaf access. Sibling-based validation
-  catches stale caches via cross-validation against the sibling pointer's
-  fence keys. Speculative read shortcuts the neighborhood scan for hot
-  keys. We'll see fig\_15a reproduce these later.\\
-  \textbf{Transition:} Here's CHIME's headline claim.\\
-  \textbf{Time:} 75s
-}
-\end{frame}
-
-% Slide — Paper's Published Results
-\begin{frame}{Paper's Published Throughput-Latency Curves}
-\centering
-\IfFileExists{../report/figures/fig12-paper.png}{%
-  \includegraphics[width=0.95\textwidth]{../report/figures/fig12-paper.png}%
-}{%
-  \begin{tikzpicture}
-    \draw[mGray!40, dashed, rounded corners=4pt] (0,0) rectangle (10,5);
-    \node[mGray] at (5,2.5) {[fig\_12 from Bang et al.\ SOSP '24]};
-  \end{tikzpicture}%
-}
-\vspace{0.3em}
-
-{\scriptsize Source: Bang et al., \emph{CHIME: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory}, SOSP '24, Figure 12 (LOAD/A/B/C/D/E across CHIME, SMART, Sherman, ROLEX, SMART-Opt).}
-\note{
-  \textbf{Key point:} The paper's headline result we are trying to reproduce.\\
-  \textbf{Say:} This is fig 12 from the paper. Throughput on the x-axis,
-  P99 latency on the y-axis. Each panel is a YCSB workload — LOAD, A, B,
-  C, D, E. Six panels, five methods per panel. CHIME's curves push to the
-  right (higher throughput) and stay low (lower latency) compared to the
-  baselines. The paper reports 2 to 5.6 times higher peak throughput than
-  the next-best baseline on read-heavy workloads. Our job is to reproduce
-  the trends on CloudLab r650 hardware.\\
-  \textbf{Transition:} The headline claim.\\
-  \textbf{Time:} 60s
-}
-\end{frame}
-
-% Slide 5 — The Claim
-{
-\setbeamercolor{background canvas}{bg=myRed}
-\begin{frame}[plain]
-\vspace*{\fill}
-\begin{center}
-{\color{white}\Huge\bfseries 2.0--5.6\texttimes{} throughput}
-\end{center}
-\vspace*{\fill}
-\note{
-  \textbf{Key point:} CHIME's headline result.\\
-  \textbf{Say:} The paper claims CHIME achieves 2.0 to 5.6 times higher
-  throughput than state-of-the-art DM indexes while using comparable
-  or less cache. Our job: reproduce this on real hardware.\\
-  \textbf{Transition:} Let me describe our experimental setup.\\
-  \textbf{Time:} 20s
-}
-\end{frame}
-}
-
-\section{Backup: Setup Detail}
-
-% Slide 8 — What We Measured
-\begin{frame}{What We Measured}
-\centering
-\begin{tikzpicture}[
-  card/.style={draw=mGray!40, rounded corners=4pt, minimum width=5cm,
-               minimum height=1.4cm, align=center, font=\small},
-]
-  \node[card] at (-3.5,1.2) {
-    \textbf{Throughput-Latency} {\scriptsize(Fig~12)}\\
-    {\color{mGray}\scriptsize Which method is fastest?}
-  };
-  \node[card] at (3.5,1.2) {
-    \textbf{Cache Consumption} {\scriptsize(Fig~14)}\\
-    {\color{mGray}\scriptsize At what cost?}
-  };
-  \node[card] at (-3.5,-1.2) {
-    \textbf{Feature Breakdown} {\scriptsize(Fig~15a)}\\
-    {\color{mGray}\scriptsize What contributes?}
-  };
-  \node[card] at (3.5,-1.2) {
-    \textbf{Feature Breakdown} {\scriptsize(Fig~15b)}\\
-    {\color{mGray}\scriptsize By how much?}
-  };
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Four core experiments targeting different aspects.\\
-  \textbf{Say:} Four core experiments. Figure 12 is the main comparison---
-  throughput vs latency across YCSB workloads. Figure 14 shows how much
-  cache each method consumes. Figures 15a and 15b break down which CHIME
-  techniques contribute how much performance.\\
-  \textbf{Transition:} Here's our timeline for running these.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 9 — Timeline
-\begin{frame}{Experiment Timeline}
-\centering
-\begin{tikzpicture}[
-  >=Stealth,
-  milestone/.style={draw, rounded corners=3pt, minimum height=0.8cm,
-                    align=center, font=\scriptsize, minimum width=2.8cm},
-]
-  % Timeline arrow
-  \draw[->, thick, mGray] (-6.5,0) -- (6.5,0);
-
-  % Milestones
-  \node[milestone, fill=mGray!15, draw=mGray] at (-5.2,0.8) {
-    Mar 23--26\\r6525 (9\,CN)
-  };
-  \draw[mGray] (-5.2,0.4) -- (-5.2,0.1);
-
-  \node[milestone, fill=mTeal!12, draw=mTeal] at (-2,0.8) {
-    Mar 27--Apr 3\\r650 debug (runs 1--4)
-  };
-  \draw[mTeal] (-2,0.4) -- (-2,0.1);
-
-  \node[milestone, fill=mGreen!15, draw=mGreen] at (1.6,0.8) {
-    Apr 5--7\\r650 data (5\,CN)
-  };
-  \draw[mGreen] (1.6,0.4) -- (1.6,0.1);
-
-  \node[milestone, fill=mBrown!15, draw=mBrown] at (5,-0.9) {
-    Apr 7--9\\\textbf{This talk}
-  };
-  \draw[mBrown] (5,-0.5) -- (5,-0.1);
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Four phases of experiment runs.\\
-  \textbf{Say:} Our timeline. Pre-deadline we ran on r6525---AMD, different
-  from the paper's Intel. Then four runs on r650 debugging RDMA over RoCE---
-  turns out you need an internal VLAN, not the control network. Finally
-  this weekend we collected hardware-matched data on 5 compute nodes.\\
-  \textbf{Transition:} Let me tell you what happened.\\
-  \textbf{Time:} 30s
-}
-\end{frame}
-
-\section{Backup: Reproduction Experience}
-
-% Slide 10 — Challenge: Hardware Mismatch
-\begin{frame}{Challenge: Hardware Mismatch}
-\centering
-\begin{tikzpicture}[
-  box/.style={draw, rounded corners=4pt, minimum width=4cm,
-              minimum height=2.5cm, align=center, font=\small},
-]
-  \node[box, draw=mTeal, fill=mTeal!8] (paper) at (-4,0) {
-    \textbf{Paper: r650}\\[0.5em]
-    Intel Xeon\\
-    ConnectX-6\\
-    36 cores/socket
-  };
-  \node[box, draw=mBrown, fill=mBrown!10] (ours) at (4,0) {
-    \textbf{Us: r6525}\\[0.5em]
-    AMD EPYC\\
-    ConnectX-5\\
-    32 cores/socket
-  };
-  \node[font=\Huge, mRed] at (0,0) {$\neq$};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} We had to use different hardware than the paper.\\
-  \textbf{Say:} Our first challenge: r650 nodes were fully booked until
-  after the deadline. We pivoted to r6525 nodes---AMD instead of Intel,
-  different NIC. We had to validate that RDMA features like DCT actually
-  worked on this hardware. They did, but we can't directly compare our
-  numbers to the paper's.\\
-  \textbf{Transition:} That wasn't the only problem.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% Slide 11 — Challenge: Broken Node
-\begin{frame}{Challenge: Broken Node}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/broken-node.pdf}
-\note{
-  \textbf{Key point:} Lost a node to hardware failure.\\
-  \textbf{Say:} Node 10 had a broken RDMA interface. We couldn't replace
-  it---CloudLab reservations are fixed. So we ran with 9 compute nodes
-  instead of 10. This matches our upcoming r650 run but means figure 12's
-  CN scaling won't match the paper exactly.\\
-  \textbf{Transition:} There were software issues too.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 12 — Challenge: RoCE Configuration
-\begin{frame}{Challenge: RDMA on Ethernet (RoCE)}
-\centering
-\begin{tikzpicture}[
-  issue/.style={draw=mRed!40, rounded corners=4pt, minimum width=3.2cm,
-                minimum height=1.4cm, align=center, font=\small},
-]
-  \node[issue] at (-4.5,0.5) {Control net RDMA\\$\to$ quarantine};
-  \node[issue] at (0,0.5) {4 mlx5 devices\\only 1 active};
-  \node[issue] at (4.5,0.5) {Wrong GID index\\$\to$ silent fail};
-  \node[font=\scriptsize\itshape, mGray, align=center] at (0,-1.2)
-    {6 config changes needed: IB\_DEV\_NAME\_IDX, IBV\_MTU,\\
-     MLX\_GID, hop\_limit, VLAN setup, memcached binding};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} r650 uses RoCE, not InfiniBand---6 config changes needed.\\
-  \textbf{Say:} The hardest part: the r650 at Clemson uses RoCE---RDMA over
-  Ethernet---not InfiniBand like the paper assumes. If you run RDMA on the
-  control network, CloudLab quarantines your account. The NIC exposes 4
-  mlx5 devices but only one is active. We needed to find the right device
-  index, GID index, MTU, hop limit, and VLAN interface. This took four
-  runs to debug---six separate config changes in total.\\
-  \textbf{Transition:} There were other issues too.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% Slide 13 — Challenge: Tooling Issues
-\begin{frame}{Challenge: Tooling Issues}
-\centering
-\begin{tikzpicture}[
-  issue/.style={draw=mRed!40, rounded corners=4pt, minimum width=3.5cm,
-                minimum height=1.2cm, align=center, font=\small},
-]
-  \node[issue] at (-4.5,0) {YCSB 0.17\\API change};
-  \node[issue] at (0,0) {16\,GB root\\partition};
-  \node[issue] at (4.5,0) {Node count\\$<$ paper's 10};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Three more tooling/environment issues.\\
-  \textbf{Say:} Three more issues. YCSB changed its Java package name
-  between versions---broke the workload generator. The r6525 root
-  partition is only 16 gigs---builds and logs fill it fast, so we moved
-  everything to NVMe. And we never got the paper's 10 compute nodes---
-  r650 availability at Clemson is heavily contended.\\
-  \textbf{Transition:} Here's what we did about each.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% Slide 13 — What We Tried
-\begin{frame}{Solutions}
-\centering
-\begin{tikzpicture}[
-  fix/.style={draw=mGreen!50, fill=mGreen!5, rounded corners=4pt,
-              minimum width=3.5cm, minimum height=1.2cm,
-              align=center, font=\small},
-]
-  \node[fix] at (-4.5,0) {Patched for\\{\scriptsize\texttt{site.ycsb} + Python~3}};
-  \node[fix] at (0,0) {NVMe mount +\\project NFS};
-  \node[fix] at (4.5,0) {memcached.conf\\port + IP fix};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Pragmatic fixes for each issue.\\
-  \textbf{Say:} For each issue, we found pragmatic fixes. Patched the YCSB
-  generator for the new API. Mounted NVMe drives and stored workloads on
-  CloudLab's project NFS---which persists across experiments, so we only
-  generate workloads once. And rewrote the memcached config for public IPs.\\
-  \textbf{Transition:} The NFS solution was actually the biggest win.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 14 — Key Win: Persistent Workloads
-\begin{frame}{Key Win: Persistent Workloads}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/nfs-reuse.pdf}
-\note{
-  \textbf{Key point:} NFS persistence saved hours across runs.\\
-  \textbf{Say:} The biggest win was persisting YCSB workloads on project
-  NFS. Workload generation takes 90 minutes and produces gigabytes of data.
-  By storing them on shared NFS, every experiment instance---r6525, r650,
-  re-runs---just symlinks to the same data. Saved hours across our three
-  reservation windows.\\
-  \textbf{Transition:} Where do we stand now?\\
-  \textbf{Time:} 40s
-}
-\end{frame}
-
-% Slide 15 — Experiment Status
-\begin{frame}{Experiment Status}
-\centering
-\begin{tikzpicture}[
-  item/.style={font=\normalsize, anchor=west},
-]
-  \node[item] at (0, 2.0) {{\color{mGreen}\checkmark}~~r6525 all figures (9\,CN, Mar 23--26)};
-  \node[item] at (0, 1.0) {{\color{mGreen}\checkmark}~~r650 Fig~15a/15b ablation (5\,CN, Mar 28 + Apr 6)};
-  \node[item] at (0, 0.0) {{\color{mGreen}\checkmark}~~r650 Fig~12 YCSB C, D, E (5\,CN, Apr 6--7)};
-  \node[item] at (0,-1.0) {{\color{mBrown}$\boldsymbol{\triangle}$}~~r650 Fig~12 YCSB A, B, LOAD (deferred --- see Apr~27 late-data \S)};
-  \node[item] at (0,-2.0) {{\color{mBrown}$\boldsymbol{\triangle}$}~~CXL transport experiments (build OK; runtime crash --- see late-data \S)};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Most experiments complete on hardware-matched r650.\\
-  \textbf{Say:} Status check. We completed all figures on r6525 pre-deadline,
-  then re-ran on the paper-matched r650 hardware. Both ablation figures are
-  complete. Fig~12 has three of six workloads done on r650, with the remaining
-  three in progress. CXL experiments are planned for Part Two.\\
-  \textbf{Transition:} What have we learned so far?\\
-  \textbf{Time:} 30s
-}
-\end{frame}
-
-% Slide 16 — Lessons So Far
-\begin{frame}{Lessons Learned}
-\centering
-\begin{tikzpicture}[
-  lesson/.style={font=\normalsize, anchor=west},
-]
-  \node[lesson] at (-3, 1.2) {{\color{mTeal}\textbf{1}}~~Reserve hardware early};
-  \node[lesson] at (-3, 0)   {{\color{mTeal}\textbf{2}}~~Automate everything you repeat};
-  \node[lesson] at (-3,-1.2) {{\color{mTeal}\textbf{3}}~~Expect API drift};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Three reproduction lessons.\\
-  \textbf{Say:} Three lessons from reproduction. First, reserve CloudLab
-  hardware weeks in advance---popular nodes book up fast. Second, automate
-  setup scripts aggressively because you'll re-run them across multiple
-  reservations. Third, don't assume open-source tooling is frozen---YCSB
-  changed its API between releases and it broke our pipeline.\\
-  \textbf{Transition:} Now let's look at what we expect from the experiments.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-\section{Backup: Methodology and Expected Results}
-
-% Slide 17 — What We're Measuring
-\begin{frame}{Methodology}
-\centering
-\begin{tikzpicture}[
-  col/.style={draw=mGray!30, rounded corners=4pt, minimum width=5cm,
-              minimum height=3cm, align=left, font=\small, anchor=north},
-]
-  \node[col] (wl) at (-3.5,1.5) {
-    \textbf{Workloads}\\[0.4em]
-    {\scriptsize YCSB A--E}\\
-    {\scriptsize 60M entries}\\
-    {\scriptsize 8B key / 8B value}\\
-    {\scriptsize Zipfian distribution}
-  };
-  \node[col] (met) at (3.5,1.5) {
-    \textbf{Metrics}\\[0.4em]
-    {\scriptsize Throughput (Mops/s)}\\
-    {\scriptsize P50 / P99 latency ($\mu$s)}\\
-    {\scriptsize Cache size (MB)}
-  };
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Standard YCSB workloads with three metric dimensions.\\
-  \textbf{Say:} Here's what we're running. YCSB workloads A through E---
-  60 million entries, 8 byte keys and values, Zipfian distribution. We
-  measure throughput in millions of operations per second, median and tail
-  latency in microseconds, and cache consumption in megabytes.\\
-  \textbf{Transition:} Based on the paper, here's what we expect.\\
-  \textbf{Time:} 40s
-}
-\end{frame}
-
-% Slide 18 — What We Expect
-\begin{frame}{Expected Outcomes}
-\centering
-\begin{tikzpicture}[
-  card/.style={draw=mGray!40, rounded corners=4pt, minimum width=3.5cm,
-               minimum height=1.6cm, align=center, font=\small},
-]
-  \node[card, draw=mTeal] at (-4.5,0) {
-    \textbf{CHIME}\\
-    {\scriptsize Highest throughput}\\
-    {\scriptsize Lowest latency}
-  };
-  \node[card] at (0,0) {
-    \textbf{Sherman}\\
-    {\scriptsize Low cache}\\
-    {\scriptsize Slow (many hops)}
-  };
-  \node[card] at (4.5,0) {
-    \textbf{SMART-SC}\\
-    {\scriptsize Fast}\\
-    {\scriptsize Massive cache}
-  };
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Predictions based on the paper's claims.\\
-  \textbf{Say:} Based on the paper, we expect CHIME to dominate on
-  throughput and latency while using moderate cache. Sherman, being a pure
-  B+ tree, should have low cache consumption but suffer from read
-  amplification. SMART with sufficient cache should be fast but use
-  disproportionate memory. Our final presentation will validate or
-  challenge these expectations.\\
-  \textbf{Transition:} Do we have any early data?\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 19 — Ablation Results (fig_15a)
-\begin{frame}{Result: Sherman $\to$ CHIME Ablation (r650)}
-\centering
-\IfFileExists{figures/fig_15a.pdf}{%
-  \includegraphics[width=0.95\textwidth]{figures/fig_15a.pdf}%
-}{%
-  \includegraphics[width=0.95\textwidth]{../exp/results/fig_15a.pdf}%
-}
-\note{
-  \textbf{Key point:} Each CHIME technique adds measurable throughput.\\
-  \textbf{Say:} Here's our actual r650 data for Fig 15a---the Sherman-to-CHIME
-  ablation. Each bar adds one technique. Hopscotch leaves give the biggest jump---
-  3x on reads. Metadata replication adds another 50\% on read-heavy workloads.
-  Speculative leaf read tops it off for YCSB B and C. The pattern matches
-  the paper's claims closely.\\
-  \textbf{Transition:} We also have the ROLEX ablation.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% Slide 20 — Ablation Results (fig_15b)
-\begin{frame}{Result: ROLEX $\to$ CHIME Ablation (r650)}
-\centering
-\IfFileExists{figures/fig_15b.pdf}{%
-  \includegraphics[width=0.95\textwidth]{figures/fig_15b.pdf}%
-}{%
-  \includegraphics[width=0.95\textwidth]{../exp/results/fig_15b.pdf}%
-}
-\note{
-  \textbf{Key point:} CHIME techniques also improve the learned index baseline.\\
-  \textbf{Say:} Fig 15b starts from ROLEX---the learned index---and adds
-  CHIME's techniques incrementally. Metadata replication is the biggest win
-  here, nearly doubling throughput on read-heavy workloads. This confirms
-  the techniques are general, not specific to the B+ tree baseline.\\
-  \textbf{Transition:} And our throughput-latency data.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 21 — Throughput-Latency (fig_12_c)
-\begin{frame}{Result: Throughput vs Latency --- YCSB C (r650)}
-\centering
-\IfFileExists{figures/fig_12_c.pdf}{%
-  \includegraphics[width=0.9\textwidth]{figures/fig_12_c.pdf}%
-}{%
-  \begin{tikzpicture}
-    \draw[mGray!40, dashed, rounded corners=4pt] (0,0) rectangle (10,5.5);
-    \node[mGray, align=center, font=\normalsize] at (5,2.75)
-      {Fig~12 YCSB~C plot\\[0.4em]
-       {\small 5 methods, 5\,CN, r650 at Clemson}\\
-       {\small CHIME: 19.5 Kops/s at 8.7\,$\mu$s P50}};
-  \end{tikzpicture}%
-}
-\note{
-  \textbf{Key point:} CHIME dominates on read-only workload.\\
-  \textbf{Say:} YCSB C is 100\% reads. CHIME reaches 19.5 thousand ops
-  per second with only 8.7 microseconds P50 latency---roughly 2.5x Sherman
-  and 1.7x ROLEX. The speculative leaf read really shines here because every
-  operation benefits from the hotspot buffer. Note we're running 5 compute
-  nodes, not the paper's 10, so absolute throughput is lower but the
-  relative ordering matches.\\
-  \textbf{Transition:} Let's look at what's next---our CXL plan.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-\section{Backup: CXL Engineering Detail}
-
-% Slide 20 — Why CXL?
-\begin{frame}{RDMA vs.\ CXL}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/rdma-vs-cxl.pdf}
-\note{
-  \textbf{Key point:} CXL replaces NIC-mediated RDMA with direct load/store.\\
-  \textbf{Say:} Part Two ports CHIME to CXL. CXL is the industry's answer
-  to disaggregated memory---instead of going through a NIC with RDMA verbs,
-  you do direct load/store to remote memory with hardware cache coherence.
-  It's lower latency but changes the programming model fundamentally.\\
-  \textbf{Transition:} Here's our porting approach.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 21 — Transport Abstraction
-\begin{frame}{Transport Abstraction Layer}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/transport-layer.pdf}
-\note{
-  \textbf{Key point:} Compile-time abstraction, zero overhead.\\
-  \textbf{Say:} Our approach: a compile-time transport abstraction. The
-  index code calls generic read/write/CAS operations. At build time, we
-  select either the RDMA backend---which wraps the existing DSM---or
-  the CXL backend, which uses NUMA-mapped memory with direct CPU
-  operations. Zero vtable overhead thanks to C++ templates.\\
-  \textbf{Transition:} How do we emulate CXL without real hardware?\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 22 — NUMA Emulation
-\begin{frame}{NUMA Emulation on r650}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/numa-emulation.pdf}
-\note{
-  \textbf{Key point:} NUMA node 1 emulates CXL memory.\\
-  \textbf{Say:} We don't have real CXL hardware, so we emulate it using
-  the r650's second NUMA domain. Application threads run on socket 0,
-  memory pool is bound to socket 1. Cross-socket latency approximates
-  CXL's expected 100 to 200 nanoseconds of additional latency.\\
-  \textbf{Transition:} What do we expect to find?\\
-  \textbf{Time:} 40s
-}
-\end{frame}
-
-% Slide 23 — What We Expect from CXL
-\begin{frame}{CXL Hypotheses}
-\centering
-\begin{tikzpicture}[
-  card/.style={draw=mGray!40, rounded corners=4pt, minimum width=3.5cm,
-               minimum height=1.6cm, align=center, font=\small},
-]
-  \node[card] at (-4.5,0) {
-    Lower per-op\\latency\\
-    {\scriptsize(no NIC overhead)}
-  };
-  \node[card] at (0,0) {
-    No coroutines\\needed\\
-    {\scriptsize(sync load/store)}
-  };
-  \node[card, draw=mRed!40] at (4.5,0) {
-    Masked CAS\\emulation risk\\
-    {\scriptsize(tail latency)}
-  };
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Three hypotheses for the CXL port.\\
-  \textbf{Say:} Three hypotheses. One: CXL should have lower per-operation
-  latency---no NIC overhead. Two: RDMA uses coroutines to hide network
-  latency; CXL doesn't need them because operations complete synchronously.
-  Three: RDMA NICs support masked CAS natively, but CPUs don't---we'll
-  need to emulate it, which could hurt tail latency under contention.\\
-  \textbf{Transition:} Here's our timeline.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-% Slide 24 — CXL Engineering Completed
-\begin{frame}{CXL Engineering: What We Built}
-\small
-\begin{tabular}{@{}p{0.42\textwidth}p{0.52\textwidth}@{}}
-\toprule
-\textbf{Artifact} & \textbf{Status} \\
-\midrule
-\texttt{CxlTransport} / \texttt{CxlDSM}        & Single-flag transport swap (\texttt{USE\_CXL=ON}) \\
-\texttt{Dockerfile.cxl-preflight}              & Reproducible build from clone \\
-5-blocker fix sequence (\texttt{152b4e9}$\to$\texttt{e430d8d}) & All blockers closed in Docker \\
-\texttt{exp/run\_harness.py}                   & Debug capture on failure (8/8 tests) \\
-\texttt{exp/fig\_14\_surrogate.py}             & 60M-key cache surrogate (5/5 tests) \\
-\texttt{exp/plot\_fig\_12\_three\_way.py}      & 3-way comparison plotter (5/5 tests) \\
-\texttt{smoke-gate.sh}                         & 5\,s LOAD + 30\,s YCSB C automated gate \\
-\texttt{runbook-day1.md}                       & T+0:00 to T+7:30 hardware-window playbook \\
-\bottomrule
-\end{tabular}
-\vspace{0.3em}
-\centering\small
-{\color{mGreen}\textbf{18 unit tests passing, builds clean, reproducible from clone.}}
-\note{
-  \textbf{Key point:} Engineering side of Part Two is fully done.\\
-  \textbf{Say:} Everything we could build off-hardware, we built and tested. The transport port itself, the Docker preflight that catches build regressions in two minutes of CI, the harness that auto-captures debug artifacts on any failure, a single-point cache-consumption surrogate, the three-way plot helper, and an automated smoke gate that defines what "the CXL port works" means in 35 seconds of cluster time. Eighteen unit tests pass. Reproduces from clone via Docker. None of this depends on a successful runtime evaluation.\\
-  \textbf{Transition:} What we couldn't do is run any of it on r650.\\
-  \textbf{Time:} 60s
-}
-\end{frame}
-
-\section{Backup: Additional Runtime Data}
-
-\begin{frame}{CXL vs RDMA: 17 New Data Points}
-\centering
-\includegraphics[height=0.78\textheight]{../report/figures/fig12-rdma-vs-cxl.pdf}
-\note{
-  \textbf{Key point:} CXL wins on read-heavy workloads, loses on range scans at low thread counts.\\
-  \textbf{Say:} Three panels, three workloads. C is read-only, D is 95\% read 5\% insert, E is range scan. CXL in red, RDMA in blue. On C and D, CXL roughly triples RDMA's throughput at low to mid thread counts. The picture flips on E. Range scans benefit from RDMA's coroutine-pipelined reads. CXL is synchronous --- each memcpy blocks. So at 16 threads CXL is half RDMA on E. Above 32 threads thread parallelism makes up for the missing intra-thread pipelining and CXL catches up.\\
-  \textbf{Transition:} The speedup ratio makes the workload-dependence clearer.\\
-  \textbf{Time:} 80s
-}
-\end{frame}
-
-\begin{frame}{Single-CN Competitors: Sherman, SMART, ROLEX}
-\centering
-\includegraphics[height=0.78\textheight]{../report/figures/fig12-competitors.pdf}
-\note{
-  \textbf{Key point:} The May 2 cluster also gave us SMART, Sherman, and ROLEX on the same single-CN hardware --- so the competitor comparison is now apples-to-apples with our CXL data, not just the multi-CN runs.\\
-  \textbf{Say:} The May 1 cluster stayed alive long enough to extend the comparison. We rebuilt CHIME with all five features off (that's Sherman) plus dropped in SMART from dmemsys/SMART and ROLEX from River861's CHIME-compatible re-implementation. All four methods share the same harness --- same memcached coordination, same workload files, same ycsb\_test entry point. Sherman scales most aggressively on C: 14 Mops/s at 64 threads, no per-operation overhead from CHIME's hopscotch displacement or speculative read. SMART peaks at 10 then regresses --- its update-in-place leaves bottleneck at high concurrency. ROLEX shipped in time only for workload C; on D and E its 60-million pre-train key load plus learned-model training blew past our 90-second per-point budget. We re-ran ROLEX D with a 300-second budget after the main sweep.\\
-  \textbf{Transition:} Three things stand out about this picture.\\
-  \textbf{Time:} 75s
-}
-\end{frame}
-
-\begin{frame}{What the Single-CN Competitor Curves Tell Us}
-\small
-\textbf{Three findings} from the May 2 single-CN sweep:
-\begin{itemize}
-  \item \textbf{Curve shapes match the paper.} Sherman scales linearly on C to 64 threads; CHIME / SMART / ROLEX bend earlier --- same shape as the paper's Figure~12, shifted down by the single-CN factor.
-  \item \textbf{ROLEX's training cost is real.} 60\,M pre-train keys $+$ epsilon-bounded model fitting, all serialized on the CN. Easy to miss in the paper's reporting; surfaced here as an operational consideration for learned indexes on disaggregated memory.
-  \item \textbf{Methods cluster on a single CN.} Gap is at most $1.4\times$ on C, $1.3\times$ on D, $1.1\times$ on E. The paper's wider gaps appear at multi-CN scale --- consistent with coordination overhead amortizing differently as CN count grows.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Sherman-on-CXL: Isolating Transport from Features}
-\centering
-\includegraphics[height=0.65\textheight]{../report/figures/fig12-transport-method.pdf}
-\note{
-  \textbf{Key point:} Building Sherman with USE\_CXL=on (Sherman is just CHIME's source with all 5 features off) lets us separate the transport benefit from the feature benefit.\\
-  \textbf{Say:} Sherman is built from CHIME's source tree with all five feature flags compiled out, so it shares CHIME's CXL transport. The 2x2 chart isolates "what does CXL transport buy you" from "what do CHIME's features add on top." Pattern is consistent: CXL beats RDMA on C and D for both methods, loses badly on E for both methods. CXL gives Sherman about a 1.4x speedup on C at low threads, similar to CHIME's same-day CXL/RDMA ratio. So the CXL win on this hardware is mostly transport-driven --- the lower latency of NUMA-loop reads versus a 2-microsecond RDMA round trip --- and mostly independent of CHIME's feature stack on the workloads where CXL wins.\\
-  \textbf{Transition:} The bigger surprise was the cross-day RDMA variance.\\
-  \textbf{Time:} 60s
-}
-\end{frame}
-
-\section{Backup: Postmortem Timeline}
-
-% Slide — Reservation Outage Timeline
-\begin{frame}{The Reservation Outage}
-\small
-Four r650 Clemson reservations against project \texttt{CS620426SP}, April 22--26:
-\vspace{0.3em}
-\begin{center}
-\begin{tabular}{@{}llll@{}}
-\toprule
-Window & UUID (truncated) & Hardware & Outcome \\
-\midrule
-Apr 22, 8h auto              & \texttt{43677ece}\ldots & 2$\times$r650 & Expired unused \\
-Apr 23, 8h auto              & \texttt{5565ec96}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
-Apr 20--25, 5d admin         & \texttt{8c36e934}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
-Apr 21--26, 5d admin         & \texttt{cc0bf3c0}\ldots & 2$\times$r650 & {\color{mRed}Failed} \\
-Apr 27, 1d auto              & \texttt{2afbcb47}\ldots & 2$\times$r650 & {\color{mGreen}Honored} \\
-\bottomrule
-\end{tabular}
-\end{center}
-\vspace{0.5em}
-\textbf{80+ hours of approved capacity. Zero nodes ever provisioned.}
-\note{
-  \textbf{Key point:} Four reservations, none honored.\\
-  \textbf{Say:} Four reservations, totaling more than 80 hours of approved capacity. The April 22 window we lost ourselves --- pre-hardware tooling overran the start. The other three were CloudLab. Every single startExperiment against an active reservation failed within ninety seconds with the same error.\\
-  \textbf{Transition:} Here is that error, verbatim.\\
-  \textbf{Time:} 45s
-}
-\end{frame}
-
-\section{Backup: Late Data Supplements}
-
-\begin{frame}[fragile]{What We Got on the r650 Reservation}
-\small After fixing three ConnectX-6 Dx compatibility issues (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart} to populate \texttt{device\_cap\_flags}):
-\vspace{0.3em}
-\begin{center}
-\textbf{fig\_12 Throughput-Thread Curves, 1\,CN $+$ 1\,MN, peak Mops/s} \\[0.3em]
-\begin{tabular}{@{}rrrr@{}}
-\toprule
-Threads & C (read-only) & D (95\%R/5\%I) & E (range scan) \\
-\midrule
-8   & 1.12          & 1.07           & 0.21          \\
-16  & 3.26 (n=3)$\dagger$ & 2.11    & 0.61          \\
-32  & 4.21 (n=3)    & 3.86           & 0.82          \\
-48  & 5.19 (n=3)    & ---            & ---           \\
-64  & 5.36 (n=3)    & 4.82           & 1.32          \\
-\bottomrule
-\end{tabular}
-\end{center}
-\vspace{0.3em}
-{\scriptsize $\dagger$ Bimodal across 8--10 reps: $\sim$2 of 10 runs land on the warm-cache mode ($\sim$5.34); the rest sit at $\sim$2.22 --- hotspot buffer warm/cold transition}
-\note{
-  \textbf{Key point:} Real fig\_12 data — 12+ runs, 3 workloads, 4 thread counts.\\
-  \textbf{Say:} The April 27 reservation finally went through after we fixed three Dx compatibility issues. We got a complete throughput-thread curve for YCSB C, D, and E on a single CN single MN config. C is read-only and shows the cleanest scaling. D scales similarly. E is much slower because range scans are expensive. The 16-thread bimodality on C is interesting — across roughly ten reps, two runs land on the warm-cache mode at 5.3 Mops and the rest sit at the cold-cache 2.2 Mops floor. The transition is sharp because at 16 threads the hotspot buffer either warms up before the measurement epoch starts or it doesn't.\\
-  \textbf{Transition:} We also ran the per-technique ablation.\\
-  \textbf{Time:} 70s
-}
-\end{frame}
-
-\begin{frame}{fig\_15a Ablation: Sherman \texttt{->} CHIME on YCSB C/D}
-\small Cumulative ablation, 16 (C) or 32 (D) threads, peak Mops/s:
-\vspace{0.3em}
-\begin{center}
-\begin{tabular}{@{}lrr@{}}
-\toprule
-Variant & C (16t) & D (32t) \\
-\midrule
-Sherman-equivalent (all OFF)             & {\color{mRed}build failed} & --- \\
-$+$ \texttt{HOPSCOTCH\_LEAF\_NODE}       & 2.14 & 3.76 \\
-$+$ \texttt{VACANCY\_AWARE\_LOCK}        & 2.15 & 3.75 \\
-$+$ \texttt{METADATA\_REPLICATION}       & {\color{mGreen}\textbf{2.40}} & {\color{mGreen}\textbf{4.16}} \\
-$+$ \texttt{SIBLING\_BASED\_VALIDATION}  & 2.40 & 4.13 \\
-$+$ \texttt{SPECULATIVE\_READ} (full)    & 2.22 & 3.89 \\
-\bottomrule
-\end{tabular}
-\end{center}
-\vspace{0.3em}
-\textbf{Findings:}
-\begin{itemize}[nosep]
-    \item \texttt{METADATA\_REPLICATION} is the only single-CN winner (saves an RTT per metadata read).
-    \item \texttt{VACANCY\_AWARE\_LOCK}, \texttt{SIBLING\_BASED\_VALIDATION}: no-ops on perf at 1\,CN; they're correctness mechanisms (Sherman LOAD finding).
-    \item \texttt{SPECULATIVE\_READ} is slightly negative without cross-CN access patterns.
-    \item Sherman-equivalent build (all features OFF) does not link --- artifact-buildability finding.
-\end{itemize}
-\note{
-  \textbf{Key point:} Per-technique deltas at 1 CN reveal which techniques need cross-CN coordination.\\
-  \textbf{Say:} We ran the same six-variant cumulative ablation that the paper does for fig 15a, but at one CN instead of ten. Only metadata replication moves the needle. Vacancy-aware lock is a no-op because there's no cross-CN write contention. Sibling-based validation is a correctness mechanism — it doesn't add throughput, it prevents the Sherman crash. Speculative read is slightly negative because the hotspot buffer relies on access patterns that single-CN can't produce. The all-features-OFF build doesn't link, which is itself an artifact-paper finding.\\
-  \textbf{Transition:} The CXL port hit a wall in the worker thread.\\
-  \textbf{Time:} 70s
-}
-\end{frame}
-
-% Slide — Future Work
-\begin{frame}{Future Work}
-\small Hardware time, reasoned about as cost-of-experiment:
-\vspace{0.3em}
-\begin{itemize}[nosep]
-    \item \textbf{Smoke gate first.} The first datum --- pass/fail on 5\,s LOAD + 30\,s YCSB C --- is more informative than any speculation in this deck.
-    \item \textbf{Single-CN fig\_12 sweep on CXL.} If the gate passes, this is the central evaluation artifact (~3 hours).
-    \item \textbf{RDMA single-node baseline + per-thread regression check.} Validates the transport refactor didn't silently break RDMA (~1.5 hours).
-    \item \textbf{fig\_15a/b ablation on CXL.} Per-technique deltas tell us which optimizations remain load-bearing when transport latency drops 10$\times$ (~1.5 hours).
-    \item \textbf{Sibling-method CXL ports} (Sherman, SMART, ROLEX, Marlin). Each requires its own transport substitution, not all are 5-blocker series.
-    \item \textbf{Real CXL hardware.} Adds protocol-credit accounting that NUMA emulation does not model.
-\end{itemize}
-\note{
-  \textbf{Key point:} Concrete future work, ordered by information value per cluster hour.\\
-  \textbf{Say:} If a reservation opens up, here's the order of operations. Smoke gate first --- 35 seconds tells you whether the port runs at all. fig\_12 on CHIME-CXL is the central artifact. The RDMA single-node baseline plus a per-thread regression check confirms the refactor didn't silently break RDMA. The ablation tells us which optimizations still pay off when latency drops by an order of magnitude. Then sibling ports, then real CXL.\\
-  \textbf{Transition:} Three takeaways.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-\section{Backup: Q\&A and References}
-
-% Slide — Questions (first; References follows for Q&A backup)
-{
-\setbeamercolor{background canvas}{bg=myRed}
-\begin{frame}[plain]
-\vspace*{\fill}
-\begin{center}
-{\color{white}\Huge\bfseries Questions?}
-\end{center}
-\vspace*{\fill}
-\note{
-  \textbf{Key point:} Open floor.\\
-  \textbf{Say:} Thank you. Happy to take questions about the reproduction,
-  our CXL plans, or anything about CHIME's design.\\
-  \textbf{Transition:} ---\\
-  \textbf{Time:} remainder
-}
-\end{frame}
-}
-
-% Slide — References (after Questions; reachable for Q&A citations)
-\begin{frame}[allowframebreaks]{References}
-\begin{thebibliography}{9}
-\footnotesize
-
-\bibitem{chime2024}
-X.~Luo, J.~Shen, P.~Zuo, X.~Wang, M.~R.~Lyu, Y.~Zhou.
-\newblock {CHIME}: A Cache-Efficient and High-Performance Hybrid Index on Disaggregated Memory.
-\newblock \emph{SOSP}, 2024.
-
-\bibitem{sherman2022}
-Q.~Wang, Y.~Lu, J.~Shu.
-\newblock {Sherman}: A Write-Optimized Distributed {B+Tree} Index on Disaggregated Memory.
-\newblock \emph{SIGMETRICS}, 2022.
-
-\bibitem{smart2023}
-X.~Luo, P.~Zuo, J.~Shen, J.~Zhou, Y.~Zhou.
-\newblock {SMART}: A High-Performance Adaptive Radix Tree for Disaggregated Memory.
-\newblock \emph{USENIX ATC}, 2023.
-
-\bibitem{rolex2024}
-P.~Li, Y.~Hua, J.~Chen, J.~Zhang.
-\newblock {ROLEX}: A Scalable {RDMA}-optimized Learned Key-Value Store for Disaggregated Memory Systems.
-\newblock \emph{USENIX FAST}, 2023.
-
-\bibitem{cxl}
-CXL Consortium.
-\newblock Compute Express Link Specification, Rev.~3.1.
-\newblock 2024.
-
-\bibitem{ornl-agents-xloop25}
-D.~Rosendo, S.~DeWitt, R.~Souza, P.~Austria, T.~Ghosal, M.~McDonnell,
-R.~Miller, T.~J.~Skluzacek, J.~Haley, B.~Turcksin, J.~McGaha, B.~Mintz,
-F.~Wang, M.~Shankar, S.~Oral, R.~Ferreira~da~Silva.
-\newblock {AI} Agents for Enabling Autonomous Experiments at {ORNL}'s {HPC}
-and Manufacturing User Facilities.
-\newblock \emph{XLOOP '25 (SC '25 Workshops)}, 2025.
-
-\end{thebibliography}
-\note{
-  \textbf{Key point:} Reference slide.\\
-  \textbf{Say:} (No spoken content---reference slide for Q\&A.)\\
-  \textbf{Transition:} ---\\
-  \textbf{Time:} 5s
-}
-\end{frame}
+\ifdefined\WITHBACKUP
+  \appendix
+  \setbeamertemplate{headline}{}
+  \input{backup-content}
+\fi
 
 \end{document}

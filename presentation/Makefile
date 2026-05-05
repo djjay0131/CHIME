@@ -2,7 +2,7 @@ TEX = pdflatex
 MAIN = main
 V2 = main-v2
 
-.PHONY: all presentation notes v2 v2-presentation v2-notes clean
+.PHONY: all presentation notes backup v2 v2-presentation v2-notes clean
 
 all: presentation
 
@@ -21,6 +21,15 @@ notes: $(MAIN)-notes.pdf
 $(MAIN)-notes.pdf: $(MAIN)-notes.tex $(MAIN).tex
 	$(TEX) $(MAIN)-notes
 	$(TEX) $(MAIN)-notes
+
+backup: $(MAIN)-backup.pdf
+
+# main-backup.tex: \def\WITHBACKUP{} + \input{main}. Builds the full deck
+# (spoken arc + appendix backup slides) for Q&A reference; the default
+# main.pdf is spoken-only.
+$(MAIN)-backup.pdf: $(MAIN)-backup.tex $(MAIN).tex backup-content.tex
+	$(TEX) $(MAIN)-backup
+	$(TEX) $(MAIN)-backup
 
 v2: v2-presentation v2-notes
 
