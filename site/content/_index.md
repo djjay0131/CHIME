@@ -34,13 +34,20 @@ We reproduce four figures from the paper on CloudLab r650 hardware with 100 Gbps
 | Mar 8 | CloudLab reservations submitted | <span class="badge badge-green">Done</span> |
 | Mar 9--16 | Pre-work: scripts, build pipeline, profiles | <span class="badge badge-green">Done</span> |
 | Mar 23--26 | Pre-deadline dry run: 11x r6525 Clemson (9 CN + 1 MN) | <span class="badge badge-green">Done</span> |
-| Apr 5--6 | r650 Clemson Run 7 (5 CN + 1 MN, 16h) | <span class="badge badge-green">Done</span> |
-| Apr 6--7 | r650 Clemson Run 8 (3 CN + 1 MN, 20h) | <span class="badge badge-green">Done</span> |
+| Mar 27--Apr 3 | r650 RDMA debug (Runs 1--4): RoCE config, internal LAN, control-net guard | <span class="badge badge-green">Done</span> |
+| Apr 5--6 | r650 Run 7 (5 CN + 1 MN, 16h): fig\_15a, fig\_15b, fig\_12 C/D | <span class="badge badge-green">Done</span> |
+| Apr 6--7 | r650 Run 8 (3 CN + 1 MN, 20h): fig\_12 E, partial LOAD/A/B | <span class="badge badge-green">Done</span> |
 | Apr 7--9 | Progress presentation (Week 12) | <span class="badge badge-green">Done</span> |
-| Apr 21--27 | Part Two: CXL port engineering, off-hardware tooling | <span class="badge badge-green">Done</span> |
-| Apr 22--26 | Part Two: CXL hardware evaluation | <span class="badge badge-maroon">Blocked (CloudLab)</span> |
-| May 5 | Final presentation | <span class="badge badge-orange">Imminent</span> |
+| Apr 21--26 | Part Two: CXL port engineering, Docker preflight, debug-capture harness | <span class="badge badge-green">Done</span> |
+| Apr 22--26 | CloudLab scheduler outage: 4 reservations failed to bind | <span class="badge badge-maroon">Diagnosed</span> |
+| Apr 27 | r650 smoke gate: build clean, runtime SIGSEGV in `internal_node_search` | <span class="badge badge-orange">Found bug</span> |
+| May 1 | One-line allocator fix (commit `a3c9e87`); CHIME-CXL runs to completion | <span class="badge badge-green">Done</span> |
+| May 2 | 24-hour autonomous sprint: CHIME/SMART/Sherman/ROLEX runtime + variance + ablations | <span class="badge badge-green">Done</span> |
+| May 3--4 | Report reframe + presentation delivery polish | <span class="badge badge-green">Done</span> |
+| May 5 | Final presentation | <span class="badge badge-orange">Today</span> |
 | May 6 | Final combined report due | <span class="badge badge-orange">Imminent</span> |
+
+The reframe: this project's contribution is the **agent-orchestrated reproduction pipeline on CloudLab**, with CHIME as the case study. Three concrete CloudLab API additions are inferred from where the agent approach broke during the Apr 22--26 outage. See [Final Presentation](/CHIME/presentation/) for the May 5 delivery.
 
 ## Deliverables
 
