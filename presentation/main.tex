@@ -43,7 +43,8 @@
 
 % VT template color assignments
 \setbeamercolor{frametitle}{bg=myRed!85, fg=white}
-\setbeamercolor{title}{fg=myRed}
+\setbeamercolor{title}{fg=white, bg=myRed}
+\setbeamercolor{subtitle}{fg=white}
 \setbeamercolor{author}{fg=myRed}
 \setbeamercolor{institute}{fg=myRed}
 \setbeamercolor{date}{fg=myRed}
@@ -1398,9 +1399,28 @@ $+$ \texttt{SPECULATIVE\_READ} (full)    & 2.22 & 3.89 \\
 }
 \end{frame}
 
-\section{Backup: References and Q\&A}
+\section{Backup: Q\&A and References}
 
-% Slide 26 — References
+% Slide — Questions (first; References follows for Q&A backup)
+{
+\setbeamercolor{background canvas}{bg=myRed}
+\begin{frame}[plain]
+\vspace*{\fill}
+\begin{center}
+{\color{white}\Huge\bfseries Questions?}
+\end{center}
+\vspace*{\fill}
+\note{
+  \textbf{Key point:} Open floor.\\
+  \textbf{Say:} Thank you. Happy to take questions about the reproduction,
+  our CXL plans, or anything about CHIME's design.\\
+  \textbf{Transition:} ---\\
+  \textbf{Time:} remainder
+}
+\end{frame}
+}
+
+% Slide — References (after Questions; reachable for Q&A citations)
 \begin{frame}[allowframebreaks]{References}
 \begin{thebibliography}{9}
 \footnotesize
@@ -1446,24 +1466,5 @@ and Manufacturing User Facilities.
   \textbf{Time:} 5s
 }
 \end{frame}
-
-% Slide 27 — Questions
-{
-\setbeamercolor{background canvas}{bg=myRed}
-\begin{frame}[plain]
-\vspace*{\fill}
-\begin{center}
-{\color{white}\Huge\bfseries Questions?}
-\end{center}
-\vspace*{\fill}
-\note{
-  \textbf{Key point:} Open floor.\\
-  \textbf{Say:} Thank you. Happy to take questions about the reproduction,
-  our CXL plans, or anything about CHIME's design.\\
-  \textbf{Transition:} ---\\
-  \textbf{Time:} remainder
-}
-\end{frame}
-}
 
 \end{document}
