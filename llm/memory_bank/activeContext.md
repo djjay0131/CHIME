@@ -2,13 +2,14 @@
 
 ## Current Focus
 
-**24-hour autonomous sprint launching now.** Reservation `312ca700` (4× r650 Clemson) starts at 2026-05-02 17:00 UTC and runs through 2026-05-03 17:00 UTC. Sprint plan at `construction/sprints/sprint-may2-24h.md`. Cluster-side runner at `script/autonomous-runner.sh` executes 8 phases without needing Claude awake; Claude wakes every 29 min via durable cron to pull results, regenerate plots, commit/push, and do the human-in-loop CXL port engineering for SMART/ROLEX in Phase 4.
-
-A second Claude session (paper writer) is running in parallel. Coordination policy: this session edits `script/`, `exp/results/may2-24h/`, `exp/plot_*.py`, `report/figures/*.pdf`, `construction/sprints/sprint-may2-24h.md`, and **appends new findings only** to `report/main-partwo.tex` / `presentation/main.tex`. Every commit starts with `git pull --rebase`. The paper writer owns editorial work on `.tex` and `references.bib`.
+**Final-deliverable polish window (May 3–6).** Experiments are complete; data is committed; report and presentation now reframed around agent-orchestrated CloudLab reproduction as the spine, with CHIME and CXL findings as the case study (per `llm/features/final-project-reframe.md`, IMPLEMENTED 2026-05-03). Next experiments not until 2026-05-05 21:00; the May-2 24-hour sprint completed before this reframe was authored. No parallel session is running.
 
 ## Spec
 
-`llm/features/final-project-no-hardware.md` (SPECIFIED) is the active spec, but its premise (CXL deferred, hardware blocked) has been superseded by reality: CXL runtime data was collected on May 1 after a single-line allocator fix (`a3c9e87`), and the May 2 reservation extends the matrix to multi-CN comparisons. Spec needs to be marked IMPLEMENTED for ACs covering CXL runtime, cross-method, and reproducibility — defer until 24h sprint completes.
+- `llm/features/final-presentation-delivery.md` (IMPLEMENTED 2026-05-04, AC-D4 user-rehearsal pending) — May 5 talk delivery: 15 spoken slides (1 title + 14 frames), 12:30 total, every slide ≤30 body words, both `main.pdf` and `main-notes.pdf` build, cut-here marker on slide 11. Backup contains 36 frames, headline-suppressed via `\setbeamertemplate{headline}{}` after `\appendix`. Verification: `bash scripts/verify-presentation-delivery.sh` PASS.
+- `llm/features/final-project-reframe.md` (VERIFIED 2026-05-04) — preceding reframe spec. Spine reframe at title, abstract, contributions block, conclusion opener; new `\section{Approach: Agent-Orchestrated Experimentation Pipeline}` (§3) with four subsections; ORNL XLOOP'25 differentiation paragraph; verification scripts at `scripts/verify-reframe.sh`. All four quality gates PASS, all 12 ACs satisfied (with two coherence-justified deviations: reading-guide update in §1 and ORNL bibitem on references slide). Surface-area tripwire reports 20% (at the floor).
+- `llm/features/final-project-no-hardware.md` (IMPLEMENTED) — superseded by the reframe at the spine level; body sections (§4–§9) intact.
+- `llm/features/final-project.md` (Apr 21) — preserved as historical context.
 
 ## Hardware Status (May 2, 2026)
 

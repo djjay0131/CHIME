@@ -66,8 +66,8 @@
   \end{tikzpicture}%
 }
 
-\title{Reproducing CHIME and Attempting a CXL Port}
-\subtitle{Engineering, Evaluation, and Infrastructure Lessons\\
+\title{Agent-Orchestrated Reproduction on CloudLab}
+\subtitle{A Case Study Reproducing CHIME and Porting It to CXL\\
 \small CS 6204 Final Project --- Spring 2026}
 \author{Jason Cusati}
 \institute[VT CS]{CS 6204 --- Advanced Topics in Systems\\Virginia Tech \\ \smallskip \textit{djjay@vt.edu}}
@@ -79,21 +79,513 @@
 \begin{document}
 
 % ============================================================
-% SECTION 1: Paper Overview (7 slides, ~5 min)
+% SECTION 1: Title
 % ============================================================
 
-\section{Paper Overview}
+\section{Title}
 
-% Slide 1 — Title
 \maketitle
 \note{
   \textbf{Key point:} Introduction.\\
-  \textbf{Say:} Good morning, I'm Jason Cusati, presenting my final project
-  on reproducing CHIME (SOSP '24) for CS 6204. Before diving into our
-  results, let me recap the paper so we're all on the same page.\\
+  \textbf{Say:} Good morning, I'm Jason Cusati, and this is my final project
+  for CS 6204. The talk has two contributions on it. First, an
+  agent-orchestrated reproduction pipeline I built on CloudLab to drive
+  the experiments---and three concrete CloudLab API additions inferred from
+  where the agent approach broke. Second, the CHIME case study we ran under
+  that pipeline: an SOSP '24 disaggregated-memory index reproduced and ported
+  to CXL. Let me start with what CHIME is, then describe the orchestration
+  layer, then the results.\\
   \textbf{Transition:} Let's start with the problem CHIME solves.\\
-  \textbf{Time:} 20s
+  \textbf{Time:} 30s
 }
+
+
+
+% ============================================================
+% SECTION 2: Experimental Setup (2 spoken slides)
+% ============================================================
+
+\section{Experimental Setup}
+
+% Slide 6 — CloudLab Setup
+\begin{frame}{CloudLab Configuration}
+\centering
+\includegraphics[height=0.82\textheight]{diagrams/cluster-topology.pdf}
+\note{
+  \textbf{Key point:} Same hardware type as the paper, fewer nodes.\\
+  \textbf{Say:} We used CloudLab's r650 nodes at Clemson---same hardware
+  as the paper. Dual 36-core Xeons, 100 Gbps Mellanox ConnectX-6 NIC. We
+  had 5 compute nodes plus 1 memory node---half the paper's 10 CN. Absolute
+  throughput is lower but relative comparisons are valid.\\
+  \textbf{Transition:} Here are the five methods we compared.\\
+  \textbf{Time:} 40s
+}
+\end{frame}
+
+% Slide 7 — Methods Compared
+\begin{frame}{Methods Compared}
+\centering
+\begin{table}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Method} & \textbf{Type} & \textbf{Source} \\
+\midrule
+\rowcolor{mTeal!8}
+CHIME & Hybrid (B+ tree + hopscotch) & dmemsys/CHIME \\
+Sherman & B+ tree & CHIME repo (diff flags) \\
+SMART & Radix tree & dmemsys/SMART \\
+ROLEX & Learned index & River861/ROLEX \\
+SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
+\bottomrule
+\end{tabular}
+\end{table}
+\note{
+  \textbf{Key point:} Five methods spanning different index designs.\\
+  \textbf{Say:} We compared all five methods from the paper. Sherman is
+  a pure B+ tree---actually built from the same CHIME codebase with
+  different compile flags. SMART is a radix tree, ROLEX is a learned
+  index. SMART-SC is SMART with sufficient cache---the upper bound
+  for cache-heavy approaches.\\
+  \textbf{Transition:} What did we measure?\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+
+% ============================================================
+% SECTION 3: Approach: Agent-Orchestrated Pipeline (4 spoken slides)
+% ============================================================
+
+\section{Approach: Agent-Orchestrated Pipeline}
+
+\begin{frame}{Three Layers of the Pipeline}
+\centering
+\begin{tikzpicture}[
+  layer/.style={draw, rounded corners=4pt, minimum width=10cm,
+                minimum height=1.5cm, align=center, font=\small},
+]
+  \node[layer, fill=myRed!15, draw=myRed] (l1) at (0,2.4) {
+    \textbf{Persona-driven user workflow}\\
+    {\scriptsize 6 personas $\cdot$ persistent memory bank $\cdot$ 4 feature specs}
+  };
+  \node[layer, fill=myOrange!18, draw=myOrange] (l2) at (0,0.6) {
+    \textbf{Programmatic CloudLab control surface}\\
+    {\scriptsize XML-RPC + REST $\cdot$ wraps reservation + experiment lifecycle}
+  };
+  \node[layer, fill=mGreen!15, draw=mGreen] (l3) at (0,-1.2) {
+    \textbf{Autonomous cluster-side runner}\\
+    {\scriptsize 9-phase plan $\cdot$ checkpoint resume $\cdot$ guard rails}
+  };
+  \draw[->, thick, mGray] (l1) -- (l2);
+  \draw[->, thick, mGray] (l2) -- (l3);
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Three coupled layers, each with named in-tree artifacts.\\
+  \textbf{Say:} The project is more orchestration than research---five methods,
+  two transports, sub-day reservation windows, six-day scheduler outage.
+  We organized it as three coupled layers. Top: persona-driven user workflow.
+  Six personas (feature-architect, construction-lead, knowledge-steward,
+  memory-agent, etc.) with a persistent memory bank and four feature specs
+  that survived three reality pivots. Middle: a programmatic CloudLab control
+  surface wrapping the XML-RPC and web APIs. Bottom: an autonomous
+  cluster-side runner that executed a 9-phase plan over 24 hours without
+  a human in the chair.\\
+  \textbf{Transition:} Two of these layers worked. The middle one half-worked,
+  and that's where the story gets interesting.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+\begin{frame}{Layer 1: Persona-Driven User Workflow}
+\centering
+\begin{tikzpicture}[
+  persona/.style={draw, rounded corners=2pt, minimum width=1.6cm,
+                  minimum height=0.7cm, align=center, font=\tiny,
+                  fill=myRed!12, draw=myRed},
+  substrate/.style={draw, rounded corners=4pt, minimum width=10.5cm,
+                    minimum height=1.6cm, align=center, font=\small,
+                    fill=myOrange!15, draw=myOrange},
+  human/.style={draw, circle, minimum size=0.9cm, align=center, font=\tiny,
+                fill=mGreen!15, draw=mGreen},
+]
+  \node[persona] (p1) at (-5.4, 2.2) {feature-\\architect};
+  \node[persona] (p2) at (-3.2, 2.2) {construction-\\lead};
+  \node[persona] (p3) at (-1.0, 2.2) {knowledge-\\steward};
+  \node[persona] (p4) at ( 1.2, 2.2) {memory-\\agent};
+  \node[persona] (p5) at ( 3.4, 2.2) {construction-\\agent};
+  \node[persona] (p6) at ( 5.6, 2.2) {proposal-\\agent};
+
+  \node[human] (h) at (-6.5, 0.4) {human};
+  \draw[->, thick, mGreen] (h.east) -- node[above, font=\tiny, mGreen]{\emph{invokes 1 per task}} (-5.0, 0.4);
+
+  \node[substrate] (sub) at (0, -0.3) {
+    \textbf{persistent substrate} \\[0.15em]
+    {\footnotesize \texttt{llm/memory\_bank/} (6 files) $\,+\,$ \texttt{llm/features/} (4 specs across 3 pivots)}
+  };
+
+  \draw[->, mGray] (p1.south) -- ($(sub.north) + (-5.4, 0)$);
+  \draw[->, mGray] (p2.south) -- ($(sub.north) + (-3.2, 0)$);
+  \draw[->, mGray] (p3.south) -- ($(sub.north) + (-1.0, 0)$);
+  \draw[->, mGray] (p4.south) -- ($(sub.north) + ( 1.2, 0)$);
+  \draw[->, mGray] (p5.south) -- ($(sub.north) + ( 3.4, 0)$);
+  \draw[->, mGray] (p6.south) -- ($(sub.north) + ( 5.4, 0)$);
+
+  \node[font=\footnotesize, text=mGray] at (0, -1.6) {coherence is from the substrate, not from agent-to-agent autonomy};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Six personas, persistent substrate, human-invoked per task.\\
+  \textbf{Say:} Six personas: feature-architect, construction-lead, knowledge-steward,
+  memory-agent, construction-agent, proposal-agent. Each one invoked by the human
+  per task --- not a self-orchestrating fleet. What made this work over six weeks
+  is the substrate: a memory bank with six files read at the start of every session,
+  and four feature specs authored when reality changed --- once in April when
+  reservations failed and we pivoted to no-hardware, once in May when hardware
+  finally worked and we reframed the contribution. The substrate held up; the
+  personas don't auto-handoff. That's the methodology contribution.\\
+  \textbf{Transition:} The middle layer is where the agent approach hits the wall.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
+\begin{frame}{Layer 2: CloudLab Control Surface --- and Where It Breaks}
+\centering
+\begin{tikzpicture}[
+  surface/.style={draw, rounded corners=4pt, minimum width=4.6cm,
+                  minimum height=1.8cm, align=center, font=\small},
+  bug/.style={draw, rounded corners=4pt, minimum width=8cm,
+              minimum height=1.4cm, align=center, font=\footnotesize,
+              fill=mRed!10, draw=mRed},
+  xmark/.style={text=mRed, font=\Huge\bfseries},
+]
+  \node[surface, fill=mGreen!12, draw=mGreen] (xmlrpc) at (-3.2, 1.6) {
+    \textbf{XML-RPC}\\
+    \emph{PEM cert}\\
+    {\scriptsize agent-driveable}};
+  \node[surface, fill=mRed!12, draw=mRed]   (web)    at ( 3.2, 1.6) {
+    \textbf{Web portal}\\
+    \emph{JWT cookie}\\
+    {\scriptsize browser-only}};
+  \node[xmark] at (0, 1.6) {$\nleftrightarrow$};
+
+  \node[bug] (rpc) at (0, -0.7) {
+    \textbf{\texttt{reservationStatus}} \emph{returns}\\
+    \texttt{Undefined subroutine \&main::DoStatus}};
+  \draw[->, thick, mGray] (xmlrpc.south) -- (rpc.north -| xmlrpc.south);
+  \node[font=\footnotesize, text=mGray] at (0, -1.9) {one broken RPC $\Rightarrow$ reservation state lives behind the JWT-only web UI};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Two control planes, the bridge is broken.\\
+  \textbf{Say:} CloudLab has two control surfaces. The XML-RPC side accepts
+  PEM client certs --- an agent can drive that. The web portal accepts JWT
+  cookies --- an agent without a browser cannot. They don't interoperate:
+  PEM against the web returns empty, JWT against XML-RPC returns 404. This
+  was workable until \texttt{reservationStatus} returned a server-side Perl
+  bug --- \texttt{Undefined subroutine \&main::DoStatus}. With that one RPC
+  broken, the only path to inspect reservation state was the JWT-only web
+  UI. That cost us six days.\\
+  \textbf{Transition:} The bottom layer worked despite all this --- here's how.\\
+  \textbf{Time:} 55s
+}
+\end{frame}
+
+\begin{frame}{Layer 3: Autonomous Runner $+$ ORNL XLOOP'25 Differentiation}
+\centering
+\begin{tikzpicture}[
+  phase/.style={draw, rounded corners=2pt, minimum width=1.05cm,
+                minimum height=0.55cm, align=center, font=\tiny,
+                fill=mGreen!18, draw=mGreen},
+  diffrow/.style={align=center, font=\scriptsize},
+]
+  % Top half: 24-hour sprint timeline
+  \node[font=\scriptsize, text=mGray] at (-5.4, 2.6) {May 2, 24h sprint};
+  \foreach \x/\lab in {-5.4/{P0\\smoke}, -4.0/{P1\\RDMA}, -2.6/{P2\\ROLEX}, -1.2/{P3\\CXL var}, 0.2/{P4\\port}, 1.6/{P5\\sweep}, 3.0/{P6\\high-T}, 4.4/{P7\\A/B}, 5.8/{P8\\30 reps}} {
+    \node[phase] at (\x, 2.0) {\lab};
+  }
+  \node[font=\scriptsize, text=mGreen] at (0, 1.3) {\textit{cluster-side runner: no human in chair $\cdot$ laptop-side agent wakes every 29 min}};
+
+  % Bottom half: ORNL XLOOP'25 differentiation 3-row table
+  \node[font=\scriptsize, text=mGray] at (-5, 0.4) {vs.\ \textbf{Rosendo et al., XLOOP '25}~\cite{ornl-agents-xloop25}};
+  \node[diffrow] at (-3.4, -0.4) {\textbf{Testbed}};
+  \node[diffrow] at (1.6,  -0.4) {ORNL HPC \emph{operator-designed}};
+  \node[diffrow] at (5.4,  -0.4) {$\rightarrow$ CloudLab \emph{shared}};
+  \node[diffrow] at (-3.4, -1.2) {\textbf{Operator scale}};
+  \node[diffrow] at (1.6,  -1.2) {institutional staff};
+  \node[diffrow] at (5.4,  -1.2) {$\rightarrow$ single PhD student};
+  \node[diffrow] at (-3.4, -2.0) {\textbf{Framing}};
+  \node[diffrow] at (1.6,  -2.0) {success-story};
+  \node[diffrow] at (5.4,  -2.0) {$\rightarrow$ \textbf{negative-result analysis}};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Bottom layer worked. Differentiation from ORNL preempts the obvious objection.\\
+  \textbf{Say:} The bottom layer is the only one that ran without me in
+  the chair. May 2 sprint, nine phases, twenty-four hours: cluster-side
+  runner drove workloads, the resilient runner wrapped each one with
+  checkpoint resume, two guard scripts caught control-net violations.
+  Laptop-side agent woke every twenty-nine minutes --- under the prompt
+  cache window --- pulled results via scp, plotted, committed. The closest
+  published prior art is Rosendo et al., XLOOP '25, on AI agents for HPC
+  user facilities at ORNL. Three differentiations: they target internal
+  facilities with operator-designed infrastructure; we target a shared
+  academic testbed where the gaps are the contribution. Institutional
+  scale versus a single PhD student. Their paper is a success story;
+  this is a negative-result analysis.\\
+  \textbf{Transition:} Now the case study --- starting with what Sherman tells us.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
+
+% ============================================================
+% SECTION 4: Stress-Testing Finding (1 spoken slide)
+% ============================================================
+
+\section{Stress-Testing Finding}
+
+\begin{frame}[fragile]{Sherman LOAD Crash on RDMA}
+\centering
+\begin{lstlisting}[basicstyle=\ttfamily\small,backgroundcolor=\color{mGray!10},frame=single]
+Assertion `k >= fence_keys.lowest' failed
+  at src/Tree.cpp:382
+\end{lstlisting}
+\medskip
+\textit{\small CHIME's \texttt{SIBLING\_BASED\_VALIDATION} $+$ \texttt{VACANCY\_AWARE\_LOCK} close the window. CHIME completes LOAD on the same input.}
+\note{
+  \textbf{Key point:} A stress finding independent of the CXL story; empirical proof CHIME's techniques are jointly necessary for correctness.\\
+  \textbf{Say:} While reproducing figure twelve, we tried Sherman LOAD at
+  full per-CN concurrency. It crashed deterministically every time, around
+  five million keys, on this assertion at Tree dot cpp line 382. The
+  assertion has escape hatches for k greater than \emph{highest} (sibling walk),
+  and for cache staleness, but no escape for k less than \emph{lowest} on a
+  fresh non-cached read. Under concurrent borrow or merge that widens
+  N's lower fence key before the parent pointer updates, a thread can
+  descend through a stale parent into a node whose fence has just moved.
+  CHIME's sibling-based validation and vacancy-aware lock close that
+  window. CHIME completes LOAD on the same input; Sherman doesn't. So
+  the crash is a baseline limitation, not a fixable bug --- it's empirical
+  proof CHIME's techniques are jointly necessary for correctness, not
+  just throughput.\\
+  \textbf{Transition:} Now CXL --- where transport changes which features pay off.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+
+% ============================================================
+% SECTION 5: CXL Findings (3 spoken slides)
+% ============================================================
+
+\section{CXL Findings}
+
+\begin{frame}{CXL/RDMA Ratio: Workload-Dependent Win}
+\centering
+\includegraphics[height=0.78\textheight]{../report/figures/fig12-cxl-rdma-ratio.pdf}
+\note{
+  \textbf{Key point:} The ratio chart isolates the workload-dependent CXL story.\\
+  \textbf{Say:} This is the speedup ratio. Bars above one mean CXL wins; below one means RDMA wins. Read-heavy workloads C and D are uniformly above one. Range-scan E dips to roughly half RDMA at 16 threads, then crosses over at 32. The implication for a CXL-native CHIME is concrete: a transport-only port leaves the range-scan optimization on the table. A CXL-native scan would need either prefetch hints or helper threads to recover the in-flight pipelining that RDMA gets from coroutines.\\
+  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+\begin{frame}{Cross-Day Reproducibility: CXL Stable, RDMA Bimodal}
+\centering
+\includegraphics[height=0.65\textheight]{../report/figures/fig12-cxl-reproducibility.pdf}
+\note{
+  \textbf{Key point:} The cleanest reproducibility finding from the project: CHIME-CXL re-runs to within five percent across days; CHIME-RDMA varies by up to two-times.\\
+  \textbf{Say:} Two re-runs on the same hardware. CHIME-CXL on May 1 versus May 2 reproduces within five percent on every workload. CHIME-RDMA on April 27 versus May 2 differs by up to two-times. The likely mechanism is the same warm-versus-cold cache bimodality we showed for the sixteen-thread variance reps. CXL has no such bimodality because there is no NIC-side queue to warm up. So the CXL/RDMA speedup ratio depends on which RDMA reference you use --- the April baseline gave a three-times speedup, the May baseline gives one-point-zero to one-point-four. Workload direction is robust; magnitude is reference-dependent. The reproducibility finding itself is the more interesting story: CXL is a more stable benchmark target than RDMA on shared cluster hardware.\\
+  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% CUT-HERE-IF-SHORT  (slide 11 — drop cleanly if rehearsal > 13:00)
+\begin{frame}{CXL fig\_15a: Speculative Read Can Hurt on CXL}
+\centering
+\includegraphics[height=0.65\textheight]{../report/figures/fig15a-cxl-ablation.pdf}
+\note{
+  \textbf{Key point:} The optimization stack that maximizes RDMA throughput is not transport-independent. Speculative read --- the last bar in CHIME's RDMA fig\_15a --- can be NEGATIVE-value on CXL.\\
+  \textbf{Say:} CXL fig\_15a on workload C, 16 and 32 threads. Full CHIME-CXL --- the rightmost bar --- is SLOWER than +Sibling at 16 threads. About 6.79 versus 8.01 Mops per second. At 32 threads CHIME-CXL barely edges +Sibling. Compare to the paper's RDMA fig\_15a where speculative read consistently adds a small positive delta at every thread count. The mechanism that makes speculative read worthwhile on RDMA --- starting an extra read in parallel to hide the round-trip --- has no payoff on a synchronous CXL transport. The second read just serializes with the first. Implication: a CXL-native CHIME successor would gain more from DISABLING speculative read than from keeping it. The optimization stack is transport-specific.\\
+  \textbf{Transition:} The reproducibility finding is the cleanest data point we have.\\
+  \textbf{Time:} 45s
+}
+\end{frame}
+
+
+% ============================================================
+% SECTION 6: CloudLab Postmortem (2 spoken slides)
+% ============================================================
+
+\section{CloudLab Postmortem}
+
+% Slide — The Misleading Error
+\begin{frame}[fragile]{The Misleading Scheduler Error}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single,breaklines=true]
+*** Resource reservation violation: 2 nodes of type
+    r650 requested, but only 0 available because of
+    existing resource reservations to other projects
+    or users.
+\end{lstlisting}
+\centering\textit{\small ``Other projects or users'' --- but our reservations \emph{were} CS620426SP.}
+\note{
+  \textbf{Key point:} The error blames other projects, but the held capacity was OURS.\\
+  \textbf{Say:} Every startExperiment over those six days returned within
+  ninety seconds with this error. ``Other projects or users'' --- but I
+  could see in the web UI that my own approved CS620426SP reservations
+  were active. The capacity was ours; the scheduler just wasn't binding
+  the experiment to it. To diagnose the mismatch, you'd run
+  \texttt{reservationStatus}. That CLI returned a Perl runtime error
+  --- \texttt{Undefined subroutine \&main::DoStatus} --- regardless of
+  UUID. There is no client-side fix for that.\\
+  \textbf{Transition:} Three concrete API additions would unblock this.\\
+  \textbf{Time:} 55s
+}
+\end{frame}
+
+% Slide — What Would Have Unblocked Us
+\begin{frame}{Three CloudLab API Additions}
+\centering
+\begin{tikzpicture}[
+  card/.style={draw, rounded corners=4pt, minimum width=3.6cm,
+               minimum height=2.2cm, align=center, font=\small,
+               text width=3.4cm, fill=mGreen!12, draw=mGreen,
+               inner sep=4pt},
+  num/.style={font=\Large\bfseries, text=mGreen},
+]
+  \node[card] (a) at (-4.2, 0) {
+    \tikz\node[num]{1};\\
+    \textbf{Fix\\\texttt{reservationStatus}}\\[0.2em]
+    {\scriptsize one-line Perl bug at line 208}};
+  \node[card] (b) at ( 0,   0) {
+    \tikz\node[num]{2};\\
+    \textbf{Precise\\scheduler error}\\[0.2em]
+    {\scriptsize name conflicting UUID, not ``other projects''}};
+  \node[card] (c) at ( 4.2, 0) {
+    \tikz\node[num]{3};\\
+    \textbf{\texttt{startExperiment\\-{}-reservation}}\\[0.2em]
+    {\scriptsize explicit binding $\Rightarrow$ ``X but profile asks Y''}};
+\end{tikzpicture}
+
+\medskip
+\centering\textit{\small each independently sufficient to surface root cause in the first failed window}
+\note{
+  \textbf{Key point:} Three engineering fixes, each independently sufficient.\\
+  \textbf{Say:} Three concrete API improvements, each individually sufficient
+  to have surfaced our root cause inside the first failed reservation window.
+  One: fix the \texttt{reservationStatus} RPC --- it's a one-line Perl bug.
+  Two: make the scheduler error name the conflicting reservation UUID,
+  instead of saying ``other projects or users'' when the holder is in fact
+  the same project under an unmatched binding. Three: add an explicit
+  \texttt{--reservation} flag to \texttt{startExperiment}, so the scheduler
+  can return ``your reservation has hardware type X but the profile asks
+  for Y.'' These are not editorial complaints. They are testable engineering
+  changes. They are the contribution this layer claims.\\
+  \textbf{Transition:} Closing the loop --- what the orchestration got us.\\
+  \textbf{Time:} 60s
+}
+\end{frame}
+
+
+% ============================================================
+% SECTION 7: Closing (2 spoken slides)
+% ============================================================
+
+\section{Closing}
+
+\begin{frame}[fragile]{From Crash to Throughput in One Line}
+\centering
+\begin{tikzpicture}[
+  region/.style={draw, minimum height=0.7cm, minimum width=0.85cm,
+                 align=center, font=\tiny, inner sep=1pt},
+  rootlabel/.style={font=\tiny, text=mRed, align=center},
+  alloclabel/.style={font=\tiny, text=mGreen, align=center},
+]
+  % BEFORE
+  \node[font=\small\bfseries, text=mRed] at (-3.6, 2.4) {Before (bug)};
+  \node[region, fill=mGreen!20] (a0) at (-5.0, 1.5) {alloc};
+  \node[region, fill=mGreen!20] at (-4.15, 1.5) {alloc};
+  \node[region, fill=mGreen!20] at (-3.30, 1.5) {alloc};
+  \node[region, fill=mRed!30, draw=mRed, ultra thick] (overlap1) at (-2.45, 1.5) {\bfseries\color{mRed}OVERLAP};
+  \node[region, fill=mRed!10] (rp1) at (-2.45, 0.6) {\texttt{root\_ptr}};
+  \node[rootlabel] at (-2.45, -0.2) {\texttt{8\,MB}\\(corrupted)};
+  \node[alloclabel] at (-5.0, 0.6) {\texttt{0}\\\textit{alloc start}};
+  \draw[->, thick, mRed] (overlap1.south) -- (rp1.north);
+
+  % AFTER
+  \node[font=\small\bfseries, text=mGreen] at (3.6, 2.4) {After (fix)};
+  \node[region, fill=mGray!20] (res) at (1.5, 1.5) {\textit{reserved}};
+  \node[region, fill=mGray!20] at (2.35, 1.5) {\textit{reserved}};
+  \node[region, fill=mGreen!20] at (3.20, 1.5) {alloc};
+  \node[region, fill=mGreen!20] at (4.05, 1.5) {alloc};
+  \node[region, fill=mGreen!20] at (4.90, 1.5) {alloc};
+  \node[region, fill=mGreen!20, draw=mGreen, ultra thick] (rp2) at (1.92, 0.6) {\texttt{root\_ptr}};
+  \node[rootlabel, text=mGreen] at (1.92, -0.2) {\texttt{8\,MB}\\(safe)};
+  \node[alloclabel] at (3.20, 0.6) {\texttt{16\,MB}\\\textit{alloc start}};
+\end{tikzpicture}
+
+\medskip\centering\small
+\texttt{alloc\_offset\_(define::kChunkSize)}\quad{\color{mGreen}\textbf{commit \texttt{a3c9e87}}}
+\quad$\to$\quad\textbf{0.6\,Mops/s, 10 epochs, no segfault}
+\note{
+  \textbf{Key point:} The CXL bug was a one-line allocator overlap. The fix was found because the orchestration captured the trace.\\
+  \textbf{Say:} Closing the loop on the orchestration claim. Three reservations
+  crashed before this got fixed. The fix turned out to be one line: the
+  CXL allocator started at offset zero, growing linearly; the tree's root
+  pointer lives at offset eight megabytes. Once allocations crossed eight
+  megabytes, alloc handed back addresses on top of the root pointer,
+  corrupting it. The instrumented trace --- written by the cluster-side
+  runner into NFS --- showed the level-four root pointer flip to a
+  level-thirty-three-thousand garbage value, then segfault. The fix is
+  to start the allocator at sixteen megabytes. One line, commit a3c9e87.
+  YCSB-C ran clean to ten epochs at 0.6 megaops per second. The bug is
+  found because the orchestration captured the failure --- not because
+  I was at the keyboard during the crash.\\
+  \textbf{Transition:} Three takeaways.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+% Slide 25 — Key Takeaways (rewritten by reframe spec to lead with orchestration)
+\begin{frame}{Key Takeaways}
+\centering
+\begin{tikzpicture}[
+  item/.style={font=\small, anchor=west, text width=10.5cm},
+]
+  \node[item] at (-5.3, 2.2)   {{\color{myRed}\textbf{1}}~~A persona-driven workflow with a memory-bank substrate \emph{can} drive a multi-method reproduction-and-port study at single-PhD-student scale.};
+  \node[item] at (-5.3, 0.7)   {{\color{myRed}\textbf{2}}~~The control-surface gaps on a shared academic testbed are themselves the contribution: three concrete CloudLab API additions, each independently sufficient to surface root cause inside the first failed window.};
+  \node[item] at (-5.3,-0.8)   {{\color{myRed}\textbf{3}}~~CHIME case study: hybrid B+/hopscotch reproduction trends match the paper; Sherman's LOAD crash empirically proves CHIME's techniques are jointly necessary for correctness; CXL transport wins on read-heavy workloads, loses on range scans, and is more reproducible across days than RDMA.};
+\end{tikzpicture}
+\note{
+  \textbf{Key point:} Three closing points, leading with orchestration.\\
+  \textbf{Say:} Three takeaways. First, a persona-driven workflow with a
+  memory-bank substrate---not a self-orchestrating fleet, but a substrate
+  that survives session boundaries---can drive a multi-method
+  reproduction-and-port study at single-PhD-student scale. Second, the
+  control-surface gaps on a shared academic testbed like CloudLab are
+  themselves the contribution: three concrete API additions inferred from
+  where the agent approach broke, each individually sufficient to surface
+  root cause inside the first failed reservation window. Third, on the
+  CHIME case study itself: hybrid B+/hopscotch reproduction trends match
+  the paper; Sherman's LOAD crash empirically proves CHIME's techniques
+  are jointly necessary for correctness, not just throughput; and CXL
+  transport wins on read-heavy workloads, loses on range scans, and is
+  more reproducible across days than RDMA. That's the project.\\
+  \textbf{Transition:} Thank you.\\
+  \textbf{Time:} 50s
+}
+\end{frame}
+
+
+% ============================================================
+% APPENDIX BEGINS — frames after this are backup / Q&A material
+% Suppress the section-navigation headline for appendix slides so the
+% nav bar doesn't overflow with backup section names.
+% ============================================================
+
+\appendix
+\setbeamertemplate{headline}{}
+
+\section{Backup: Paper Overview}
 
 % Slide 2 — The Problem
 \begin{frame}{Disaggregated Memory Indexes}
@@ -241,56 +733,7 @@
 \end{frame}
 }
 
-% ============================================================
-% SECTION 2: Our Experiment (4 slides, ~3 min)
-% ============================================================
-
-\section{Experimental Setup}
-
-% Slide 6 — CloudLab Setup
-\begin{frame}{CloudLab Configuration}
-\centering
-\includegraphics[height=0.82\textheight]{diagrams/cluster-topology.pdf}
-\note{
-  \textbf{Key point:} Same hardware type as the paper, fewer nodes.\\
-  \textbf{Say:} We used CloudLab's r650 nodes at Clemson---same hardware
-  as the paper. Dual 36-core Xeons, 100 Gbps Mellanox ConnectX-6 NIC. We
-  had 5 compute nodes plus 1 memory node---half the paper's 10 CN. Absolute
-  throughput is lower but relative comparisons are valid.\\
-  \textbf{Transition:} Here are the five methods we compared.\\
-  \textbf{Time:} 40s
-}
-\end{frame}
-
-% Slide 7 — Methods Compared
-\begin{frame}{Methods Compared}
-\centering
-\begin{table}
-\small
-\begin{tabular}{lll}
-\toprule
-\textbf{Method} & \textbf{Type} & \textbf{Source} \\
-\midrule
-\rowcolor{mTeal!8}
-CHIME & Hybrid (B+ tree + hopscotch) & dmemsys/CHIME \\
-Sherman & B+ tree & CHIME repo (diff flags) \\
-SMART & Radix tree & dmemsys/SMART \\
-ROLEX & Learned index & River861/ROLEX \\
-SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
-\bottomrule
-\end{tabular}
-\end{table}
-\note{
-  \textbf{Key point:} Five methods spanning different index designs.\\
-  \textbf{Say:} We compared all five methods from the paper. Sherman is
-  a pure B+ tree---actually built from the same CHIME codebase with
-  different compile flags. SMART is a radix tree, ROLEX is a learned
-  index. SMART-SC is SMART with sufficient cache---the upper bound
-  for cache-heavy approaches.\\
-  \textbf{Transition:} What did we measure?\\
-  \textbf{Time:} 45s
-}
-\end{frame}
+\section{Backup: Setup Detail}
 
 % Slide 8 — What We Measured
 \begin{frame}{What We Measured}
@@ -370,11 +813,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% ============================================================
-% SECTION 3: What Happened (7 slides, ~6 min)
-% ============================================================
-
-\section{Reproduction Experience}
+\section{Backup: Reproduction Experience}
 
 % Slide 10 — Challenge: Hardware Mismatch
 \begin{frame}{Challenge: Hardware Mismatch}
@@ -558,11 +997,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% ============================================================
-% SECTION 4: Expected Results (3 slides, ~2.5 min)
-% ============================================================
-
-\section{Expected Results}
+\section{Backup: Methodology and Expected Results}
 
 % Slide 17 — What We're Measuring
 \begin{frame}{Methodology}
@@ -698,40 +1133,7 @@ SMART-SC & Radix + sufficient cache & dmemsys/SMART \\
 }
 \end{frame}
 
-% ============================================================
-% NEW SECTION: Stress-Testing Finding (1 slide)
-% ============================================================
-
-\section{Stress-Testing Finding}
-
-\begin{frame}[fragile]{Sherman LOAD Crash on RDMA}
-\small
-At 3 CN $\times$ 64 threads on r650, Sherman crashed deterministically at $\sim$5\,M keys:
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single]
-Assertion `k >= fence_keys.lowest' failed
-  at src/Tree.cpp:382
-\end{lstlisting}
-
-\begin{itemize}[nosep]
-    \item The assertion has escape hatches for $k \ge$ \texttt{highest} (sibling-walk) and \texttt{from\_cache} staleness, but \emph{none} for $k < $ \texttt{lowest} on a fresh non-cached read.
-    \item Concurrent borrow/merge that grows N's lower fence key, before the parent pointer is updated, exposes a stale-descent window.
-    \item CHIME's \texttt{SIBLING\_BASED\_VALIDATION} and \texttt{VACANCY\_AWARE\_LOCK} close that window --- which is why CHIME completes LOAD on the same input.
-\end{itemize}
-
-\textbf{Framing:} this empirically reinforces the paper's claim that the techniques are jointly necessary, not merely a throughput stack.
-\note{
-  \textbf{Key point:} A stress finding independent of the CXL story.\\
-  \textbf{Say:} While reproducing fig\_12, we tried to run Sherman LOAD at full per-CN concurrency. It crashed deterministically every time, around 5 million keys. The assertion at Tree.cpp 382 has escape hatches for $k \ge$ highest and for cache staleness, but no escape for $k <$ lowest on a non-cached read. Under concurrent borrow or merge that grows N's lower fence key before the parent pointer updates, a thread can descend through a stale parent into a node whose fence has just been widened. CHIME's sibling-based validation and vacancy-aware lock close that exact window --- which is why CHIME completes LOAD on the same workload. The crash is a baseline limitation, not a fixable bug. It's a finding that empirically reinforces the paper's joint-necessity claim.\\
-  \textbf{Transition:} Now to Part Two: the CXL port.\\
-  \textbf{Time:} 70s
-}
-\end{frame}
-
-% ============================================================
-% SECTION 5: CXL Port (now describing what was built and what was blocked)
-% ============================================================
-
-\section{CXL Port}
+\section{Backup: CXL Engineering Detail}
 
 % Slide 20 — Why CXL?
 \begin{frame}{RDMA vs.\ CXL}
@@ -839,34 +1241,7 @@ Assertion `k >= fence_keys.lowest' failed
 }
 \end{frame}
 
-% ============================================================
-% NEW SECTION: CXL Runtime Results (May 1 breakthrough)
-% ============================================================
-
-\section{CXL Runtime Results}
-
-\begin{frame}[fragile]{CXL: From Crash to Throughput in One Patch}
-\small After several reservations of failed runs, instrumented traces of \texttt{Tree::get\_root\_ptr} produced this signature on May 1:
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single]
-[trc] get_root_ptr: level=4 ptr.offset=0x46bf00      <- normal
-[trc] get_root_ptr: level=4 ptr.offset=0x46bf00      <- normal
-[trc] get_root_ptr: level=33025 ptr.offset=0x4504... <- CORRUPTED
-<segfault on next read_sync>
-\end{lstlisting}
-\textbf{Bug}: \texttt{CxlTransport::alloc} initialized \texttt{alloc\_offset\_ = 0} and grew linearly. Once allocations exceeded 8\,MB, alloc returned addresses that overlapped \texttt{root\_ptr\_ptr} at \texttt{kRootPointerStoreOffest = kChunkSize/2 = 8\,MB}, corrupting the level-4 root pointer between writes/reads.
-\vspace{0.4em}
-
-\textbf{Fix} (\texttt{a3c9e87}): \texttt{alloc\_offset\_(define::kChunkSize)} --- reserve the first 16\,MB. One line.
-\vspace{0.4em}
-
-\textbf{Result}: \texttt{ycsb\_test 1 1 1 randint c} runs to {\color{mGreen}\texttt{[END]}} at 0.573\,Mops/s, 10 epochs, no segfault.
-\note{
-  \textbf{Key point:} The CXL bug was a one-line allocator overlap with root-pointer storage.\\
-  \textbf{Say:} The CXL crash that haunted three reservations turned out to be one line of code. CxlTransport's alloc started at offset zero. The tree's root pointer is stored at offset 8 MB. Once allocations crossed 8 MB, the allocator started handing back addresses that landed on top of the root pointer, corrupting it. The first read after that crossing returned a level-33-thousand garbage value, and the next read of that fake address segfaulted in libc memcpy. The fix is to start the allocator at 16 MB. One line. The instrumented trace makes the bug obvious in retrospect.\\
-  \textbf{Transition:} With CXL working, we ran the full sweep.\\
-  \textbf{Time:} 70s
-}
-\end{frame}
+\section{Backup: Additional Runtime Data}
 
 \begin{frame}{CXL vs RDMA: 17 New Data Points}
 \centering
@@ -878,23 +1253,6 @@ Assertion `k >= fence_keys.lowest' failed
   \textbf{Time:} 80s
 }
 \end{frame}
-
-\begin{frame}{CXL/RDMA Ratio: Workload-Dependent Win}
-\centering
-\includegraphics[height=0.78\textheight]{../report/figures/fig12-cxl-rdma-ratio.pdf}
-\note{
-  \textbf{Key point:} The ratio chart isolates the workload-dependent CXL story.\\
-  \textbf{Say:} This is the speedup ratio. Bars above one mean CXL wins; below one means RDMA wins. Read-heavy workloads C and D are uniformly above one. Range-scan E dips to roughly half RDMA at 16 threads, then crosses over at 32. The implication for a CXL-native CHIME is concrete: a transport-only port leaves the range-scan optimization on the table. A CXL-native scan would need either prefetch hints or helper threads to recover the in-flight pipelining that RDMA gets from coroutines.\\
-  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% ============================================================
-% NEW SECTION: Single-CN Competitor Comparison (May 2)
-% ============================================================
-
-\section{Competitor Methods, Same Hardware}
 
 \begin{frame}{Single-CN Competitors: Sherman, SMART, ROLEX}
 \centering
@@ -928,39 +1286,7 @@ Assertion `k >= fence_keys.lowest' failed
 }
 \end{frame}
 
-\begin{frame}{CXL fig\_15a: Speculative Read Can Hurt on CXL}
-\centering
-\includegraphics[height=0.65\textheight]{../report/figures/fig15a-cxl-ablation.pdf}
-\note{
-  \textbf{Key point:} The optimization stack that maximizes RDMA throughput is not transport-independent. Speculative read --- the last bar in CHIME's RDMA fig\_15a --- can be NEGATIVE-value on CXL.\\
-  \textbf{Say:} CXL fig\_15a on workload C, 16 and 32 threads. Full CHIME-CXL --- the rightmost bar --- is SLOWER than +Sibling at 16 threads. About 6.79 versus 8.01 Mops per second. At 32 threads CHIME-CXL barely edges +Sibling. Compare to the paper's RDMA fig\_15a where speculative read consistently adds a small positive delta at every thread count. The mechanism that makes speculative read worthwhile on RDMA --- starting an extra read in parallel to hide the round-trip --- has no payoff on a synchronous CXL transport. The second read just serializes with the first. Implication: a CXL-native CHIME successor would gain more from DISABLING speculative read than from keeping it. The optimization stack is transport-specific.\\
-  \textbf{Transition:} The reproducibility finding is the cleanest data point we have.\\
-  \textbf{Time:} 75s
-}
-\end{frame}
-
-\begin{frame}{Cross-Day Reproducibility: CXL Stable, RDMA Bimodal}
-\centering
-\includegraphics[height=0.65\textheight]{../report/figures/fig12-cxl-reproducibility.pdf}
-\note{
-  \textbf{Key point:} The cleanest reproducibility finding from the project: CHIME-CXL re-runs to within five percent across days; CHIME-RDMA varies by up to two-times.\\
-  \textbf{Say:} Two re-runs on the same hardware. CHIME-CXL on May 1 versus May 2 reproduces within five percent on every workload. CHIME-RDMA on April 27 versus May 2 differs by up to two-times. The likely mechanism is the same warm-versus-cold cache bimodality we showed for the sixteen-thread variance reps. CXL has no such bimodality because there is no NIC-side queue to warm up. So the CXL/RDMA speedup ratio depends on which RDMA reference you use --- the April baseline gave a three-times speedup, the May baseline gives one-point-zero to one-point-four. Workload direction is robust; magnitude is reference-dependent. The reproducibility finding itself is the more interesting story: CXL is a more stable benchmark target than RDMA on shared cluster hardware.\\
-  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
-  \textbf{Time:} 70s
-}
-\note{
-  \textbf{Key point:} Three concrete findings from the new single-CN data, all of which connect back to the paper's larger-cluster claims.\\
-  \textbf{Say:} First, the curve shapes match the paper at single-CN scale, just shifted down. Second, ROLEX's training-time overhead is significant and worth flagging --- we make it explicit here. Third, the method-to-method gap on one CN is at most 1.4-times on C; the paper's bigger gaps are at multi-CN scale, which is consistent with their coordination overhead claims.\\
-  \textbf{Transition:} The infrastructure side wasn't as fortunate.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% ============================================================
-% NEW SECTION: Postmortem (3 slides)
-% ============================================================
-
-\section{CloudLab Postmortem}
+\section{Backup: Postmortem Timeline}
 
 % Slide — Reservation Outage Timeline
 \begin{frame}{The Reservation Outage}
@@ -990,57 +1316,7 @@ Apr 27, 1d auto              & \texttt{2afbcb47}\ldots & 2$\times$r650 & {\color
 }
 \end{frame}
 
-% Slide — The Misleading Error
-\begin{frame}[fragile]{The Misleading Scheduler Error}
-\small Every \texttt{startExperiment} returned within $\sim$90\,s:
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single,breaklines=true]
-*** Resource reservation violation: 2 nodes of type
-    r650 requested, but only 0 available because of
-    existing resource reservations to other projects
-    or users.
-\end{lstlisting}
-
-\textbf{The diagnostic CLI is also broken:}
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{mGray!10},frame=single,breaklines=true]
-$ reservationStatus 5565ec96-3ebe-...
-Undefined subroutine &main::DoStatus called at
-/usr/testbed/bin/manage_resgroup line 208.
-\end{lstlisting}
-
-\begin{itemize}[nosep]
-    \item ``Other projects or users'' --- but our active reservations \emph{were} CS620426SP.
-    \item No CLI path to inspect reservation state. PEM cert authenticates the XML-RPC layer; JWT authenticates the web cookies. Neither bridges the gap.
-\end{itemize}
-\note{
-  \textbf{Key point:} The error is misleading and the CLI to diagnose it is broken server-side.\\
-  \textbf{Say:} The scheduler error attributes the held capacity to "other projects or users" --- but the user has approved CS620426SP reservations active right now. To diagnose the mismatch, you'd want reservationStatus. That CLI returns a Perl runtime error from the server. There is no client-side fix for that. PEM client cert authenticates the XML-RPC CLI; JWT authenticates web cookies; neither path can read reservation state.\\
-  \textbf{Transition:} Here is what would have unblocked us.\\
-  \textbf{Time:} 60s
-}
-\end{frame}
-
-% Slide — What Would Have Unblocked Us
-\begin{frame}{What Would Have Unblocked Us}
-\small Three concrete CloudLab API improvements, each individually sufficient:
-\vspace{0.3em}
-\begin{itemize}
-    \item[\textbf{1.}] \textbf{Fix \texttt{reservationStatus}.} The server-side error is a one-line Perl bug at \texttt{manage\_resgroup} line 208. Restoring the RPC restores the only programmatic path to inspect reservation state.
-    \item[\textbf{2.}] \textbf{Make the scheduler error precise.} ``0 available, other projects or users'' is wrong when the holder is the same project under an unmatched binding. Naming the conflicting reservation UUID would point at the root cause immediately.
-    \item[\textbf{3.}] \textbf{Add \texttt{startExperiment --reservation <uuid>}.} Reservation-to-experiment binding is currently implicit. An explicit flag returns ``hardware type X but profile asks for Y'' on the spot.
-\end{itemize}
-\note{
-  \textbf{Key point:} Three engineering fixes, each individually sufficient.\\
-  \textbf{Say:} Three improvements would have closed this. Fix the Perl bug. Make the scheduler error specific to the actual conflict. Add an explicit reservation-binding flag to startExperiment. Each one is independently sufficient to have surfaced our root cause within the first failed window. We submitted these as a structured change request to CloudLab support.\\
-  \textbf{Transition:} What's left, what's next.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
-
-% ============================================================
-% NEW: Late Data — what Apr 27 produced
-% ============================================================
-
-\section{Late Data: Apr 27 r650}
+\section{Backup: Late Data Supplements}
 
 \begin{frame}[fragile]{What We Got on the r650 Reservation}
 \small After fixing three ConnectX-6 Dx compatibility issues (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart} to populate \texttt{device\_cap\_flags}):
@@ -1102,10 +1378,6 @@ $+$ \texttt{SPECULATIVE\_READ} (full)    & 2.22 & 3.89 \\
 }
 \end{frame}
 
-% ============================================================
-% SECTION 6: Close (3 slides, ~2 min)
-% ============================================================
-
 % Slide — Future Work
 \begin{frame}{Future Work}
 \small Hardware time, reasoned about as cost-of-experiment:
@@ -1126,23 +1398,7 @@ $+$ \texttt{SPECULATIVE\_READ} (full)    & 2.22 & 3.89 \\
 }
 \end{frame}
 
-% Slide 25 — Key Takeaways (updated for final)
-\begin{frame}{Key Takeaways}
-\centering
-\begin{tikzpicture}[
-  item/.style={font=\small, anchor=west, text width=10cm},
-]
-  \node[item] at (-5, 2)   {{\color{mTeal}\textbf{1}}~~Hybrid B+/hopscotch genuinely breaks the cache vs.\ read-amp trade-off; reproduction trends matched the paper.};
-  \node[item] at (-5, 0.5) {{\color{mTeal}\textbf{2}}~~CHIME's techniques are jointly necessary for correctness, not just throughput --- Sherman's LOAD crash is the empirical proof.};
-  \node[item] at (-5,-1)   {{\color{mTeal}\textbf{3}}~~Engineering effort and infrastructure access are different gates --- clearing the first does not clear the second.};
-\end{tikzpicture}
-\note{
-  \textbf{Key point:} Three closing points.\\
-  \textbf{Say:} Three takeaways. CHIME's hybrid design genuinely works --- our reproduction trends match the paper for the figures we collected. CHIME's techniques are jointly necessary for correctness, not just for throughput; the Sherman crash demonstrates that empirically. And engineering effort and infrastructure access are different gates --- the same week we shipped a clean CXL port, automated harness, smoke gate, and runbook, we could not get one node provisioned. That's the project in three sentences.\\
-  \textbf{Transition:} Thank you.\\
-  \textbf{Time:} 50s
-}
-\end{frame}
+\section{Backup: References and Q\&A}
 
 % Slide 26 — References
 \begin{frame}[allowframebreaks]{References}
@@ -1173,6 +1429,14 @@ P.~Li, Y.~Hua, J.~Chen, J.~Zhang.
 CXL Consortium.
 \newblock Compute Express Link Specification, Rev.~3.1.
 \newblock 2024.
+
+\bibitem{ornl-agents-xloop25}
+D.~Rosendo, S.~DeWitt, R.~Souza, P.~Austria, T.~Ghosal, M.~McDonnell,
+R.~Miller, T.~J.~Skluzacek, J.~Haley, B.~Turcksin, J.~McGaha, B.~Mintz,
+F.~Wang, M.~Shankar, S.~Oral, R.~Ferreira~da~Silva.
+\newblock {AI} Agents for Enabling Autonomous Experiments at {ORNL}'s {HPC}
+and Manufacturing User Facilities.
+\newblock \emph{XLOOP '25 (SC '25 Workshops)}, 2025.
 
 \end{thebibliography}
 \note{
