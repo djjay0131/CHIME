@@ -1,0 +1,6 @@
+% main-notes.tex — speaker-view wrapper for main.tex.
+% Defines \SHOWNOTES so main.tex enables the \setbeameroption{show notes on
+% second screen=right}, then includes main.tex unchanged. Built by
+% pdflatex / latexmk like a normal source file (no -jobname trick required).
+\def\SHOWNOTES{}
+\input{main}

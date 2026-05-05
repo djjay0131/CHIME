@@ -14,9 +14,13 @@ $(MAIN).pdf: $(MAIN).tex
 
 notes: $(MAIN)-notes.pdf
 
-$(MAIN)-notes.pdf: $(MAIN).tex
-	$(TEX) -jobname=$(MAIN)-notes "\def\SHOWNOTES{}\input{$(MAIN)}"
-	$(TEX) -jobname=$(MAIN)-notes "\def\SHOWNOTES{}\input{$(MAIN)}"
+# main-notes.tex is a wrapper that defines \SHOWNOTES then includes main.tex.
+# Building it like any other .tex file produces main-notes.pdf in speaker view
+# (slide-on-left + notes-on-right). The wrapper file is committed so CI
+# (xu-cheng/latex-action) can build it without a -jobname workaround.
+$(MAIN)-notes.pdf: $(MAIN)-notes.tex $(MAIN).tex
+	$(TEX) $(MAIN)-notes
+	$(TEX) $(MAIN)-notes
 
 v2: v2-presentation v2-notes
 

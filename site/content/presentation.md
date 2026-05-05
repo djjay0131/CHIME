@@ -5,11 +5,14 @@ subtitle: "Final Project Presentation, May 5, 2026"
 
 ## Final Presentation (May 5)
 
-**Download:** <a href="/CHIME/pdfs/final-presentation.pdf">final-presentation.pdf</a>
+**Downloads:**
+
+- <a href="/CHIME/pdfs/final-presentation.pdf">final-presentation.pdf</a> — audience view (slides only)
+- <a href="/CHIME/pdfs/final-presentation-notes.pdf">final-presentation-notes.pdf</a> — speaker view (slides + presenter notes side-by-side)
 
 {{< pdf "/pdfs/final-presentation.pdf" >}}
 
-The final-project presentation covers the same arc as the report: reproduction trends matched, Sherman LOAD stress finding, CXL port engineering completed, four-window CloudLab reservation outage with verbatim error, and three concrete API improvements that would have unblocked the evaluation.
+The final-project presentation is reframed around agent-orchestrated reproduction on CloudLab as the contribution, with CHIME serving as the case study. The arc: setup, the three-layer agent pipeline (persona-driven workflow, programmatic CloudLab control surface, autonomous cluster-side runner), Sherman LOAD stress finding, CXL findings (workload-dependent CXL win, cross-day reproducibility, speculative-read-hurts-on-CXL ablation), the misleading scheduler error, three concrete CloudLab API additions that would each independently have unblocked the evaluation, and a closing slide on the one-line allocator fix that the orchestration captured into NFS for offline triage.
 
 ---
 
