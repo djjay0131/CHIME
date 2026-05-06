@@ -22,13 +22,15 @@ LOG=/tmp/bootstrap-${NODE}.log
 {
 echo "=== bootstrap on $NODE at $(date -u +%FT%TZ) ==="
 
-# 1. Pre-write modprobe.d so MAX_ATOMIC_ARG=8 is picked up next time mlx5_core loads.
-if [ ! -f /etc/modprobe.d/mlx5_core.conf ] || ! grep -q "MAX_ATOMIC_ARG=8" /etc/modprobe.d/mlx5_core.conf; then
-    echo "[$(date -u +%H:%M:%S)] writing /etc/modprobe.d/mlx5_core.conf"
-    echo 'options mlx5_core MAX_ATOMIC_ARG=8' | sudo tee /etc/modprobe.d/mlx5_core.conf > /dev/null
+# 1. Skip MAX_ATOMIC_ARG=8 modprobe option on r650 Clemson — May 6 incident
+#    showed it crashes mlx5_core at load and bricks the control NIC. We accept
+#    device_cap_flags=0 and run workloads that don't require RDMA atomics
+#    (workload C and E are read-only; D requires atomics — skip on this run).
+#    If a previous bootstrap installed the option, REMOVE it.
+if [ -f /etc/modprobe.d/mlx5_core.conf ]; then
+    echo "[$(date -u +%H:%M:%S)] removing /etc/modprobe.d/mlx5_core.conf (caps=0 fallback)"
+    sudo rm -f /etc/modprobe.d/mlx5_core.conf
 fi
-# Update initramfs so the option is read at next boot
-sudo update-initramfs -u 2>&1 | tail -2 || true
 
 # 2. Install OFED if absent
 if ! ibv_devinfo &>/dev/null; then
