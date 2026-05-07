@@ -1,12 +1,13 @@
-\documentclass[conference,letterpaper,10pt]{IEEEtran}
+\documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{amsmath}
-\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{caption}
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{xcolor}
@@ -15,14 +16,8 @@
 \usepackage{enumitem}
 \usepackage{multirow}
 \usepackage{url}
-\usepackage{stfloats}  % allow figure*/table* at bottom of page
 
-% IEEEtran's default \theparagraph and \theparagraphdis use alphabetic counter (\alph) which caps at 26.
-% This report has 56 \paragraph entries, so switch to numeric to avoid "Counter too large".
-\renewcommand{\theparagraph}{\arabic{paragraph}}
-\makeatletter
-\def\theparagraphdis{\arabic{paragraph})}
-\makeatother
+\geometry{margin=1in}
 
 \lstset{
   basicstyle=\ttfamily\small,
@@ -37,11 +32,12 @@
 \hypersetup{colorlinks=true,linkcolor=vtmaroon,citecolor=vtmaroon,urlcolor=vtorange}
 
 \title{Agent-Orchestrated Reproduction on CloudLab:\\
-A Case Study Reproducing CHIME and Porting It to CXL}
-\author{\IEEEauthorblockN{Jason Cusati}\\
-\IEEEauthorblockA{CS 6204 --- Advanced Topics in Systems\\
-Virginia Tech, Spring 2026\\
-\texttt{djjay@vt.edu}}}
+A Case Study Reproducing CHIME and Porting It to CXL\\[0.5em]
+\large CS 6204 Final Project Report}
+\author{Jason Cusati (\texttt{djjay@vt.edu})\\
+CS 6204 --- Advanced Topics in Systems\\
+Virginia Tech, Spring 2026}
+\date{May 6, 2026}
 
 \begin{document}
 
@@ -167,7 +163,7 @@ The third layer of the pipeline is an autonomous cluster-side runner that execut
 
 \paragraph{Phase plan.} The sprint is laid out in \texttt{construction/sprints/sprint-may2-24h.md} as nine numbered phases, each with a UTC time window, a one-line goal, and a pass-fail gate. Phase~0 is provisioning and smoke (RDMA + CXL); Phases~1--2 collect the CHIME/SMART/Sherman/ROLEX RDMA matrix at 3\,CN+1\,MN; Phase~3 measures CXL variance across five replications; Phase~4 is the human-in-loop CXL-port engineering for sibling methods; Phases~5--6 sweep CXL competitor methods and high-thread-count points; Phases~7--8 retry workloads A/B and run a 30-replication variance study; Phase~9 is the final pulldown, plotting, and commit. The phase boundaries are deliberate: each gate either passes (advance) or fails (skip and log), so a single phase failure does not block the rest of the 24-hour sprint.
 
-\paragraph{Cluster-side runner.} \texttt{script/autonomous-runner.sh} (275 lines) drives the phase plan from the master node. Each phase invokes \texttt{ycsb\_test} via a guarded wrapper, redirects all output to NFS at \texttt{/proj/\allowbreak cs620426sp-PG0/\allowbreak djjay-results/\allowbreak may2-24h/}, and updates a heartbeat file every 60 seconds. \texttt{exp/resilient\_runner.py} (394 lines) wraps individual workload runs with checkpoint resume, so a single point that fails or hangs does not lose the whole sweep --- the next sweep iteration starts from where the previous left off. Together the two scripts give the cluster a 24-hour autonomy budget: the master node will finish whatever phases it can finish, write its progress to NFS, and stay alive until either Phase~9 completes or the reservation expires.
+\paragraph{Cluster-side runner.} \texttt{script/autonomous-runner.sh} (275 lines) drives the phase plan from the master node. Each phase invokes \texttt{ycsb\_test} via a guarded wrapper, redirects all output to NFS at \texttt{/proj/cs620426sp-PG0/djjay-results/may2-24h/}, and updates a heartbeat file every 60 seconds. \texttt{exp/resilient\_runner.py} (394 lines) wraps individual workload runs with checkpoint resume, so a single point that fails or hangs does not lose the whole sweep --- the next sweep iteration starts from where the previous left off. Together the two scripts give the cluster a 24-hour autonomy budget: the master node will finish whatever phases it can finish, write its progress to NFS, and stay alive until either Phase~9 completes or the reservation expires.
 
 \paragraph{Guard rails.} Two guard scripts wrap the runner. \texttt{script/control-net-guard.sh} samples interface byte counters every 30 seconds and aborts the experiment if RDMA traffic appears on the control NIC --- the policy that would otherwise quarantine the experiment, as happened on Run~3 of Part One. \texttt{script/run-with-guard.sh} wraps each \texttt{ycsb\_test} invocation with the guard plus a per-process OOM watchdog. The two guards together enforce the invariants that previously cost reservation windows to human error: data plane never on the control net, and one OOM never wedges the entire phase.
 
@@ -267,52 +263,52 @@ Each figure was driven by an existing experiment script under \texttt{exp/} that
 
 We collected fig\_12 for YCSB workloads C, D, and E across all five methods (CHIME, Sherman, SMART, ROLEX, SMART-SC) on r650 Clemson. Workload C is read-only, D is read-mostly with the latest distribution, and E is range-scan-heavy. Figure~\ref{fig:fig12-paper} reproduces the corresponding panels from the paper for direct comparison; Figure~\ref{fig:fig12-ours} shows our reproduction of the C/D/E subset on r650 Clemson Run~7--8.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-paper.png}
 \caption{Paper's Figure~12: throughput--latency comparison of range indexes on disaggregated memory across YCSB LOAD/A/B/C/D/E. Reproduced from Bang et al.\ SOSP\,'24~\cite{chime2024} for side-by-side comparison. Axes: throughput in Mops/s, P99 latency in $\mu$s ($\times 10$).}
 \label{fig:fig12-paper}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-ours.pdf}
 \caption{Our reproduction of fig\_12 for YCSB C, D, E on CloudLab r650 Clemson (Run~7: 5 CN + 1 MN, Apr 6 2026; Run~8: 3 CN + 1 MN, Apr 7 2026). Same axis convention as the paper (throughput in Mops/s, P99 latency in $\mu$s). Trends match the paper: CHIME and SMART-SC dominate at the high-throughput tail; ROLEX is competitive on the read-heavy workloads C and D but trails on the range-scan workload E; Sherman's curves sit below CHIME's by a factor consistent with the paper's reported gap. Absolute peaks are roughly proportional to the CN-count ratio (5 or 3 versus the paper's 10), so we draw conclusions about \emph{trends} rather than absolute throughput.}
 \label{fig:fig12-ours}
-\end{figure*}
+\end{figure}
 
 \subsection{Figure~15a: Factor Analysis (Sherman-Based)}
 
 Fig\_15a is the cumulative-ablation analysis: starting from a Sherman baseline, each of CHIME's five techniques is added in sequence (\texttt{HOPSCOTCH\_LEAF\_NODE} $\to$ \texttt{VACANCY\_AWARE\_LOCK} $\to$ \texttt{METADATA\_REPLICATION} $\to$ \texttt{SIBLING\_BASED\_VALIDATION} $\to$ \texttt{SPECULATIVE\_READ}), and the throughput delta per addition is measured across YCSB workloads. We collected the full set on r650 Run~7 (6 methods $\times$ 5 workloads, 36-minute experiment runtime).
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_15a.pdf}
 \caption{Our reproduction of fig\_15a, the cumulative Sherman-to-CHIME ablation, on r650 Clemson Run~7 (5 CN + 1 MN). Each bar adds one of CHIME's techniques on top of Sherman. Trends match the paper~\cite{chime2024}: hopscotch leaves contribute the largest single delta on read-mostly workloads, vacancy-aware locks dominate on writes, and the remaining three techniques contribute smaller but non-zero gains in CHIME's intended order. The cumulative gain from Sherman to full CHIME on YCSB~C is consistent with the paper's published delta.}
 \label{fig:fig15a-ours}
-\end{figure*}
+\end{figure}
 
 \subsection{Figure~15b: Factor Analysis (ROLEX-Based)}
 
 Fig\_15b is the dual ablation: starting from ROLEX, the same five techniques are added in sequence to produce SMART-SC. We collected the full 5-methods-by-4-workloads matrix on Run~7.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_15b.pdf}
 \caption{Our reproduction of fig\_15b, the cumulative ROLEX-to-SMART-SC ablation, on r650 Clemson Run~7. Trends again match the paper~\cite{chime2024}: the cache-related techniques (\texttt{ENABLE\_CACHE}, \texttt{ENABLE\_CACHE\_EVICTION}) contribute the largest deltas on workloads where the working set exceeds local cache; the remaining techniques contribute incrementally as in fig\_15a.}
 \label{fig:fig15b-ours}
-\end{figure*}
+\end{figure}
 
 \subsection{What We Could Not Reproduce, and Why}
 
 \begin{description}[nosep,leftmargin=1em]
-    \item \textbf{fig\_12 workload~A (full sweep).} Run~8 successfully completed the workload~A sweep on the cluster, but the result-pull step was scheduled too late and the experiment expired before the JSON files were transferred to the local machine. \texttt{exp/results/fig\_12\_a\_partial.json} exists from an earlier checkpoint. The operational lesson is to pull results immediately after each workload completes rather than on a single end-of-run timer.
+    \item[\textbf{fig\_12 workload~A (full sweep).}] Run~8 successfully completed the workload~A sweep on the cluster, but the result-pull step was scheduled too late and the experiment expired before the JSON files were transferred to the local machine. \texttt{exp/results/fig\_12\_a\_partial.json} exists from an earlier checkpoint. The operational lesson is to pull results immediately after each workload completes rather than on a single end-of-run timer.
 
-    \item \textbf{fig\_12 workload~B.} Partial: CHIME completed 5 of 8 thread-count points on Run~8; Sherman, SMART, ROLEX, and SMART-SC did not start. Cause: workload~B was scheduled last in the run order and the reservation expired mid-sweep.
+    \item[\textbf{fig\_12 workload~B.}] Partial: CHIME completed 5 of 8 thread-count points on Run~8; Sherman, SMART, ROLEX, and SMART-SC did not start. Cause: workload~B was scheduled last in the run order and the reservation expired mid-sweep.
 
-    \item \textbf{fig\_12 workload LOAD for Sherman, ROLEX, SMART-SC.} Sherman crashes on LOAD (the stress-testing finding in §\ref{sec:stress}); ROLEX and SMART-SC were scheduled in the same window and were preempted by the Sherman crash investigation. CHIME and SMART completed LOAD on Run~8.
+    \item[\textbf{fig\_12 workload LOAD for Sherman, ROLEX, SMART-SC.}] Sherman crashes on LOAD (the stress-testing finding in §\ref{sec:stress}); ROLEX and SMART-SC were scheduled in the same window and were preempted by the Sherman crash investigation. CHIME and SMART completed LOAD on Run~8.
 
-    \item \textbf{fig\_14 (cache consumption).} The paper sweeps over 40--120\,M keys. The corresponding YCSB workload files were not regenerated in time for either Part One run (regenerating each takes 1--2 hours of wall time and we ran out of off-cluster CPU budget). The single-point surrogate at 60\,M described in §\ref{sec:cxl-fig14} would have provided the trend datum, but it requires a successful CXL run that did not occur (§\ref{sec:postmortem}).
+    \item[\textbf{fig\_14 (cache consumption).}] The paper sweeps over 40--120\,M keys. The corresponding YCSB workload files were not regenerated in time for either Part One run (regenerating each takes 1--2 hours of wall time and we ran out of off-cluster CPU budget). The single-point surrogate at 60\,M described in §\ref{sec:cxl-fig14} would have provided the trend datum, but it requires a successful CXL run that did not occur (§\ref{sec:postmortem}).
 \end{description}
 
 Each gap above is a known absence with a concrete cause, not an inconclusive result. We separately note that fig\_3a (the paper's micro-benchmark of one-sided RDMA primitives) is a stretch goal in our project specification and was not attempted.
@@ -417,11 +413,12 @@ The mechanical work to thread the \texttt{USE\_CXL} flag through the project, ga
 
 Because we anticipated that hardware time would be scarce and uncertain, the spec frontloaded the off-hardware work that a typical evaluation does on the cluster as it goes. Table~\ref{tab:tooling} lists what we built, where it lives, and the test status for each.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
-\footnotesize
+\scriptsize
 \caption{Off-hardware tooling for the CXL evaluation. Every item is committed to \texttt{main} and exercised by unit tests where applicable. Total: 18 unit tests passing.}
 \label{tab:tooling}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lll@{}}
 \toprule
 Artifact & Purpose & Test status \\
@@ -432,10 +429,11 @@ Artifact & Purpose & Test status \\
 \texttt{exp/plot\_fig\_12\_three\_way.py}        & Multi-series throughput-latency plot helper   & 5/5 unit tests \\
 \texttt{construction/scripts/smoke-gate.sh}      & Automated CXL go/no-go gate                    & Manual definition \\
 \texttt{construction/scripts/runbook-day1.md}    & T+0:00 to T+7:30 hardware-window playbook      & Manual definition \\
-\texttt{construction/\allowbreak design/\allowbreak sherman-load-\allowbreak crash-analysis.md} & Sherman static analysis           & Source for §\ref{sec:stress} \\
+\texttt{construction/design/sherman-load-crash-analysis.md} & Sherman static analysis           & Source for §\ref{sec:stress} \\
 \bottomrule
-\end{tabular}
-\end{table*}
+\end{tabular}%
+}
+\end{table}
 
 The harness, in particular, is calibrated for an unattended overnight run: any non-zero \texttt{ycsb\_test} exit triggers automatic capture of the core dump, the full stderr, the current \texttt{git rev-parse HEAD}, the build's \texttt{CMakeCache.txt}, the in-tree \texttt{include/Common.h}, the hostname, and the hugepage state, all into a per-invocation directory under \texttt{debug/<timestamp>-<workload>/}. Triage proceeds off-hardware after the reservation closes; the reservation clock is never spent on live debug.
 
@@ -483,7 +481,7 @@ None of these ran. The remainder of this section explains why.
 
 We held four r650 Clemson reservations against project \texttt{CS620426SP} between April 22 and April 26. None converted into a successful experiment. Table~\ref{tab:reservation-timeline} summarizes.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{Reservation timeline, April 22--26, 2026. All reservations were filed against the \texttt{chime-r650-clemson-lan} profile in project CS620426SP; ``Failed'' rows mean every \texttt{startExperiment} attempt against the active reservation returned the scheduler error in \S\ref{sec:postmortem-error}.}
@@ -498,7 +496,7 @@ Apr 20--25, 5d admin-approved     & \texttt{8c36e934}\ldots & 2$\times$r650 & Fa
 Apr 21--26, 5d admin-approved     & \texttt{cc0bf3c0}\ldots & 2$\times$r650 & Failed \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 The April 22 window was lost to pre-hardware tooling overrunning the scheduled start; this is on us. The April 23, 25, and 26 windows failed against a CloudLab-side error pattern that we describe next.
 
@@ -520,9 +518,9 @@ The phrasing ``other projects or users'' is the diagnostically important piece. 
 
 For triage, Table~\ref{tab:failed-experiments} lists representative failed \texttt{startExperiment} attempts. Each failed within ~90 seconds with the error in \S\ref{sec:postmortem-error}. UUIDs are CloudLab-side identifiers and can be cross-referenced through portal logs.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
-\small
+\scriptsize
 \caption{Failed \texttt{startExperiment} UUIDs against project CS620426SP.}
 \label{tab:failed-experiments}
 \begin{tabular}{@{}llll@{}}
@@ -538,7 +536,7 @@ UUID & Date (UTC) & Profile name binding & Notes \\
 \texttt{1ddc9b8e-d3f2-4f61-a57c-a015ffbc5ba3} & Apr 26 23:15 & \texttt{n=2,hw=r650} & Final attempt before pivot \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \subsection{The Diagnostic Dead End: \texttt{reservationStatus}}
 \label{sec:postmortem-resstatus}
@@ -611,21 +609,18 @@ After the postmortem timeline above closed, an additional reservation (UUID \tex
 
 \paragraph{Runtime (smoke-gate FAIL).} \texttt{./ycsb\_test 1 8 1 randint c} reaches the LOAD phase, runs for approximately 17 seconds, then segfaults. The same crash reproduces with thread count reduced to 1 (\texttt{1 1 1}). \texttt{gdb} on the core dump (artifacts at \texttt{exp/results/cxl-smoke-04271959/}) yields the following stack trace on the faulting thread:
 
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
 Program terminated with signal SIGSEGV.
 #0  0x00007f22a0ab2a80 in ?? ()
-#1  Tree::internal_node_search(GlobalAddress&,
-        GlobalAddress&, Key const&, uint16_t&,
-        bool, CoroPull*)
-#2  Tree::insert_internal(Key const&,
-        GlobalAddress const&, RootEntry const&,
-        uint8_t, CoroPull*)
-#3  Tree::hopscotch_split_and_unlock(LeafNode*,
-        Key const&, uint64_t, GlobalAddress const&,
-        uint64_t*, CoroPull*)
-#4  Tree::leaf_node_insert(GlobalAddress const&,
-        GlobalAddress const&, Key const&,
-        uint64_t, bool, CoroPull*)
+#1  Tree::internal_node_search(GlobalAddress&, GlobalAddress&,
+                               Key const&, uint16_t&, bool, CoroPull*)
+#2  Tree::insert_internal(Key const&, GlobalAddress const&,
+                          RootEntry const&, uint8_t, CoroPull*)
+#3  Tree::hopscotch_split_and_unlock(LeafNode*, Key const&,
+                                     uint64_t, GlobalAddress const&,
+                                     uint64_t*, CoroPull*)
+#4  Tree::leaf_node_insert(GlobalAddress const&, GlobalAddress const&,
+                            Key const&, uint64_t, bool, CoroPull*)
 #5  Tree::insert(Key const&, uint64_t, CoroPull*)
 \end{lstlisting}
 
@@ -635,7 +630,7 @@ The faulting program counter is in an unmapped region, consistent with either (a
 
 \begin{itemize}[nosep]
     \item \textbf{Root partition is 16\,GB on r650 Clemson} (separate from \texttt{/proj} NFS, which has 100\,GB). This is small enough that an apt cache plus a CHIME source clone consumes it, blocking subsequent package installs. We resolved this by relocating the build directory to \texttt{/proj/cs620426sp-PG0/djjay-build/}, leaving root at 21\% used. Future reservations should symlink \texttt{build-cxl/} to NFS at setup time.
-    \item \textbf{Hugepages must be allocated to NUMA node 1, not split across both nodes.} The default Linux behavior of \texttt{echo N > /proc/sys/vm/nr\_hugepages} splits hugepages evenly across NUMA nodes. \texttt{CxlTransport} requests hugepage backing on node 1 specifically; the half on node 0 is unusable and the \texttt{memset} in the constructor produces a bus error before any output is written. Explicitly allocating to node 1 (\texttt{echo 36000 > /sys/\allowbreak devices/\allowbreak system/\allowbreak node/\allowbreak node1/\allowbreak hugepages/\allowbreak hugepages-2048kB/\allowbreak nr\_hugepages}) eliminates the bus error and lets the binary reach the LOAD phase.
+    \item \textbf{Hugepages must be allocated to NUMA node 1, not split across both nodes.} The default Linux behavior of \texttt{echo N > /proc/sys/vm/nr\_hugepages} splits hugepages evenly across NUMA nodes. \texttt{CxlTransport} requests hugepage backing on node 1 specifically; the half on node 0 is unusable and the \texttt{memset} in the constructor produces a bus error before any output is written. Explicitly allocating to node 1 (\texttt{echo 36000 > /sys/devices/system/node/node1/hugepages/hugepages-2048kB/nr\_hugepages}) eliminates the bus error and lets the binary reach the LOAD phase.
 \end{itemize}
 
 \paragraph{Hypothesis-narrowing iterations.} Within the same window we ran two follow-up experiments to narrow the crash hypothesis:
@@ -660,7 +655,7 @@ A focused fix-and-rerun cycle on a future reservation has a much smaller search 
 
 \paragraph{CXL throughput-thread curve (Figure~\ref{fig:cxl-rdma-compare}, May 1).} With the allocator fix landed, we collected a single-CN CXL throughput curve for YCSB~C across 1, 2, 4, 8, 16, 32, 64 threads. Table~\ref{tab:cxl-vs-rdma} pairs the CXL numbers against the corresponding RDMA peaks from the same workload on the same hardware (1\,CN + 1\,MN configuration, two-node r650 Clemson reservation \texttt{2afbcb47}). Across the lower end of the thread sweep the CXL transport delivers 2--3$\times$ the RDMA throughput; at high thread counts the gap narrows because the single-CN hop count is no longer the bottleneck.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{Single-CN CXL vs.\ RDMA peak throughput on YCSB~C, r650 Clemson, May 1, 2026. RDMA peaks are taken from the variance runs (best-of-N at each thread count). CXL peaks are single-shot since reproducibility was not (yet) measured. The CXL/RDMA ratio drops at $\geq 32$ threads because at that point the RDMA pipeline is bound on the same compute-side resources (cache, masked-CAS retry rate) as CXL is.}
@@ -678,36 +673,36 @@ Threads & RDMA peak (Mops/s) & CXL (Mops/s) & CXL$/$RDMA \\
 64  & 5.47    & 10.49 & 1.92$\times$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 The CXL curve is monotone in thread count (no bimodality) which is consistent with the elimination of the cross-CN cache-warming dynamics that produced the RDMA-side bimodality at 16 and 48 threads. The CXL transport, having no NIC-side queue depth or completion polling, has no equivalent dynamic.
 
 \paragraph{Three-workload CXL evaluation: a workload-dependent picture.} We extended the CXL sweep to all three reproducible workloads (C read-only, D 95\%/5\% read/insert, E range-scan). Figure~\ref{fig:cxl-rdma-compare} plots both transports side by side; Figure~\ref{fig:cxl-rdma-ratio} renders the per-workload speedup ratio.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-rdma-vs-cxl.pdf}
 \caption{CHIME throughput-thread curves on RDMA and CXL transports, single CN $+$ MN, r650 Clemson, May 1 2026. CXL's emulated transport (NUMA mmap with \texttt{numa\_set\_preferred(1)}) wins decisively on read-only and read-mostly workloads (C, D) but loses to RDMA's coroutine-pipelined reads on the range-scan workload (E) at low thread counts, only catching up at 32 threads when there are enough threads to hide CXL's per-read synchronicity.}
 \label{fig:cxl-rdma-compare}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig12-cxl-rdma-ratio.pdf}
 \caption{CXL/RDMA throughput ratio per workload and thread count. Values $>1$ mean CXL outperforms RDMA at the same configuration; values $<1$ mean RDMA wins. C and D show CXL wins across the board ($1.05$--$3.40\times$). E shows the crossover: CXL is $0.53\times$ RDMA at 16 threads but $1.27\times$ at 32 threads. The crossover happens because CHIME's range-scan implementation issues multiple in-flight RDMA \texttt{READ} requests per coroutine per thread; CXL has no such pipeline (each \texttt{memcpy} is synchronous), so range scans are serialized within each thread until thread parallelism alone makes up for the loss.}
 \label{fig:cxl-rdma-ratio}
-\end{figure*}
+\end{figure}
 
 \paragraph{What this evaluation tells us about CHIME on CXL.} The headline finding is workload-dependent. On read-heavy workloads where each operation is a single point lookup, CXL's $\sim$80\,ns NUMA-loop latency wins over RDMA's $\sim$2\,$\mu$s round trip by a factor consistent with the latency ratio. On range scans where the RDMA implementation amortizes the round-trip cost across many in-flight reads per coroutine, CXL's synchronous transport loses ground until thread parallelism catches up. The implication for CXL-native index design is concrete: a CXL port that simply substitutes the transport (as ours does) leaves the range-scan optimization on the table; a CXL-native scan operator would need to either run additional helper threads per scan or use prefetch hints (\texttt{\_\_builtin\_prefetch}) to batch loads into the cache hierarchy. We did not have time to implement either; both belong in a CXL-native CHIME successor as the next paper-worthy investigation.
 
 \paragraph{Late-data: competitor methods on the same single-CN hardware (May 2, 2026).} While the May 1 cluster remained alive, we extended the same 1\,CN~$+$~1\,MN harness to three of the paper's competing methods --- Sherman, SMART, and ROLEX (River861's CHIME-compatible re-implementation~\cite{rolex2023}) --- so that the throughput numbers are directly comparable to CHIME's RDMA and CXL curves on the same hardware. Figure~\ref{fig:fig12-competitors} renders the four-method comparison; Sherman is built from the CHIME source tree with all five CHIME features disabled (\texttt{HOPSCOTCH\_LEAF\_NODE=off}, \texttt{VACANCY\_AWARE\_LOCK=off}, etc.), which is the same construction the paper uses for Figure~15a's leftmost bar. SMART and ROLEX are built from \texttt{dmemsys/SMART} and \texttt{River861/ROLEX} with their default cmake flags. All three share CHIME's two-stage memcached-coordinated bootstrap, the \texttt{../workloads.conf} convention, and the \texttt{ycsb\_test \textless N\textgreater~\textless threads\textgreater~1 randint \textless workload\textgreater} entry point.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-competitors.pdf}
 \caption{Single-CN throughput-thread comparison of CHIME (April 27, RDMA), SMART, ROLEX, and Sherman (all May 2, RDMA), on r650 Clemson 1\,CN~$+$~1\,MN. Sherman scales most aggressively on workload C (14.16\,Mops at 64 threads) because it has the smallest per-operation overhead (no hopscotch displacement, no metadata replication, no speculative read). CHIME's full feature stack pays a small per-operation cost in single-CN configurations where the cross-CN concurrency that those features were designed to handle is not present; the paper's published gap on workload C between Sherman and CHIME at multi-CN matches our measurement direction at single-CN. SMART peaks at 10.2\,Mops/s on C at 48 threads then regresses at 64 (bottlenecks on its update-in-place leaf node under high concurrency). ROLEX shipped in time only for workload C (60-million pre-train key load plus learned-model training exceeded our 90-second per-point budget on D and E; D was re-run with a 300-second budget after the main sweep).}
 \label{fig:fig12-competitors}
-\end{figure*}
+\end{figure}
 
 The single-CN comparison reinforces three findings. First, Sherman's pure-B$+$-tree baseline scales linearly with thread count on workload C up to 64 threads, while CHIME, SMART, and ROLEX all show the bend that the paper attributes to coordination overhead --- this is the same shape as the paper's Figure~12 panel for C, just shifted down by the single-CN factor. Second, ROLEX's learned-index startup cost (60-million pre-train keys plus epsilon-bounded model training, all serialized on the CN) is significant and easy to miss in the paper's reporting; we make the cost explicit here because it is a real operational consideration for a learned index on disaggregated memory. Third, the relative ordering between methods on workloads D and E, where measured (SMART vs. Sherman), matches the paper's published trend: Sherman dominates D at high thread counts (12.0 Mops at 64t vs. SMART's 6.7), and SMART is competitive on E because its ART-indexed cache amortizes range-scan reads. The four-method curves all live within a 1.4$\times$ band on C, a 1.3$\times$ band on D, and a 1.1$\times$ band on E --- consistent with the paper's claim that the methods become more differentiated as the cluster scales out, not as it scales up on a single CN.
 
@@ -717,34 +712,34 @@ The single-CN comparison reinforces three findings. First, Sherman's pure-B$+$-t
 
 \paragraph{Cross-day RDMA variance and CXL reproducibility: an unexpected finding.} While the May 1 reservation was still alive, we collected a same-day CHIME-RDMA reference sweep on May 2 against the same hardware as the May 1 CXL run, and we re-ran the CHIME-CXL sweep on May 2 to check whether the May 1 CXL numbers reproduced. Figure~\ref{fig:fig12-cxl-repro} shows the four resulting curves (RDMA Apr 27, RDMA May 2, CXL May 1, CXL May 2) per workload. The cross-day pattern is striking and consistent across all three workloads: \textbf{CXL is highly reproducible across days, but RDMA is not.} CHIME-CXL on workload C delivered $1.985$ / $3.497$ / $6.523$ / $10.365$ / $10.492$\,Mops/s on May 1 at 4/8/16/32/64 threads, and $1.948$ / $3.473$ / $6.720$ / $9.891$ / $10.182$ on May 2 --- a maximum cross-day delta of $\sim 5\%$. CHIME-RDMA on the same hardware-class moved from $0.58$\,Mops/s on April 27 (T=4) to $1.47$ on May 2 (T=4), and from $4.21$ to $9.98$ at T=32 --- a $\sim 2\times$ cross-day variance, with the May 2 numbers roughly tracking the warm-cache mode of the bimodal distribution we documented in Figure~\ref{fig:fig12-variance}.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-cxl-reproducibility.pdf}
 \caption{Cross-day reproducibility on r650 Clemson 1\,CN $+$ 1\,MN. Solid lines are May 2 (same hardware, same software, fresh reservation); dashed lines are the original Apr 27 RDMA and May 1 CXL data. \textbf{CXL May 1 $\to$ May 2 reproduces within $\sim 5\%$ on all three workloads}; \textbf{RDMA Apr 27 $\to$ May 2 differs by up to a factor of two}. The likely mechanism is the same one that produces the bimodal RDMA distribution at 16 and 48 threads: warm-cache versus cold-cache state at the start of the throughput-measurement epoch. CXL has no such bimodality because there is no NIC-side queue to warm up.}
 \label{fig:fig12-cxl-repro}
-\end{figure*}
+\end{figure}
 
 \paragraph{Implications for the speedup magnitude.} Using the May 2 same-day baselines, the CXL-over-RDMA speedup on workload C is closer to $1.0$--$1.4\times$ than the $1.05$--$3.40\times$ band Table~\ref{tab:cxl-vs-rdma} reports against the April 27 reference. The workload-dependent direction of the original finding (CXL wins on C/D, loses on E) is robust under the change of baseline; the magnitude of the CXL win on read-heavy workloads is, in honesty, smaller than the April baseline implied. We retain Table~\ref{tab:cxl-vs-rdma} for transparency about the original measurements but report the May 2 reference values in Figure~\ref{fig:fig12-transport-method} so the reader can read both. The cross-day reproducibility finding itself is, we think, the more interesting story: \emph{CXL's lack of cross-day variance makes it a more stable benchmarking target than RDMA on shared cluster hardware} --- a property worth keeping in mind when designing comparative experiments on disaggregated memory.
 
 \paragraph{CXL fig\_15a ablation: speculative read can hurt on CXL.} Because we already had the Sherman-CXL build and the full CHIME-CXL build, completing the cumulative-ablation chain for CXL was a small additional step: we built four intermediate variants (\texttt{+hopscotch}, \texttt{+vacancy}, \texttt{+metadata}, \texttt{+sibling}, all with \texttt{USE\_CXL=on}) and ran them at 16 and 32 threads on workloads C and D. Figure~\ref{fig:fig15a-cxl-ablation} shows the result on workload C; the workload-D pattern is similar. The headline finding is that, on CXL, the marginal contribution of the final feature (\texttt{SPECULATIVE\_READ}) is \emph{not always positive}: at 16 threads on C, full CHIME-CXL ($6.79$\,Mops/s) is actually slower than \texttt{+sibling-CXL} ($8.01$\,Mops/s); at 32 threads on C, full CHIME-CXL ($10.50$) edges past \texttt{+sibling} ($10.40$) by only $\sim 1\%$. This contrasts with the paper's Figure~15a on RDMA, where speculative read consistently adds a small but positive delta at every thread count. The mechanism that makes speculative read worthwhile on RDMA --- starting an extra read in parallel to hide the round-trip --- has no payoff on a synchronous CXL transport, where the second read is fully serialized with the first. \emph{The optimization stack that maximizes RDMA throughput is therefore not transport-independent}: a CXL-native CHIME successor would gain more from disabling speculative read than from keeping it. We do not have multi-CN CXL hardware to verify this finding scales out, but the pattern is consistent and reproducible across two thread counts and two workloads in our single-CN data, and it is the most concrete piece of evidence in our project that the CXL transport changes which CHIME features pay for themselves.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig15a-cxl-ablation.pdf}
 \caption{CXL fig\_15a ablation: cumulative add of CHIME's five features starting from Sherman-CXL, on YCSB~C at 16 and 32 threads (1\,CN $+$ 1\,MN, May 2). Compare to the paper's RDMA Figure~15a where speculative read consistently adds a small positive delta. On CXL, full CHIME ($+$Speculative) is \emph{slower} than $+$Sibling at 16 threads and only marginally faster at 32 threads. Speculative read's value is RDMA-specific: it hides the round-trip latency, but on synchronous CXL the speculative second read is serialized with the first.}
 \label{fig:fig15a-cxl-ablation}
-\end{figure*}
+\end{figure}
 
 \paragraph{Statistical confirmation (May 3 sprint, n $=$ 20--30 reps).} On a follow-on 14-hour single-CN sprint that the May 2 reservation kept alive, we collected variance reps for the speculative-read findings. The headline gaps are statistically rock-solid: on workload C at 16 threads, $+$sibling-CXL averaged $8.109$\,Mops/s with a standard deviation of $0.082$ across $n=20$ reps, while full CHIME-CXL averaged $6.731$ with a standard deviation of $0.044$. The gap is $1.38$\,Mops/s and the pooled standard error is $0.021$, so the gap is $\sim$\,$66\sigma$ --- more confidence than any standard significance bar would require. On workload E at 32 threads, Sherman-CXL averaged $1.532 \pm 0.056$ versus full CHIME-CXL at $1.079 \pm 0.037$ across $n=15$ each, giving a $0.45$\,Mops/s gap at $\sim$\,$26\sigma$. We also extended the single-CN ablation to all six variants across thread counts $4, 8, 16, 24, 32, 48$ on workload C and additionally workloads D and E (Figure~\ref{fig:fig15a-cxl-ablation-full}). The pattern holds across all three workloads: full CHIME-CXL is slower than $+$sibling-CXL at every thread count below $\sim$\,$32$ on C and D, and slower than even the no-features Sherman-CXL baseline at $T=4, 8$ on C; on E the gap widens to a $25$--$33\%$ range-scan slowdown that persists across all thread counts in our sweep. Coroutine count from $1$ to $32$ does not change the picture (within $1\%$ at $T=16$).
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig15a-cxl-ablation-full.pdf}
 \caption{Full CXL ablation across workloads C, D, E and thread counts $4$--$48$ ($T$=$8$--$64$ on E), $1$\,CN $+$ $1$\,MN. Five replications per cell; error bars $=$ $\pm 1$ standard deviation. The dashed red line is full CHIME-CXL ($+$Speculative); it sits below $+$Sibling-CXL across most of the sweep on C and D, and below $+$Sibling-CXL and even Sherman-CXL across the entire sweep on E. Speculative read is net-negative on CXL.}
 \label{fig:fig15a-cxl-ablation-full}
-\end{figure*}
+\end{figure}
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{CXL ablation, paper-grade. Five replications per cell; mean throughput in Mops/s. Workload E numbers in italics. Bold entries highlight the speculative-read step's contribution: positive on RDMA in the published paper, but \emph{net-negative on CXL} at every thread count tested on E and at $T \le 16$ on C and D.}
@@ -770,7 +765,7 @@ D $T=48$ & 10.45 & 10.76 & 10.60 & 10.70 & 10.62 & \textbf{10.54} \\
 \textit{E $T=64$} & \textit{2.20} & \textit{2.08} & \textit{1.93} & \textit{1.87} & \textit{1.91} & \textbf{\textit{1.47}} \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \paragraph{Long-run steady-state stability of CXL.} A 180-second single-process run of CHIME-CXL at 16 threads on C reported $10$ throughput epochs spanning the post-warmup steady state at $6.667, 6.665, 6.672, 6.669, 6.669, 6.672, 6.669, 6.667$ Mops/s. The standard deviation across the post-warmup steady state is below $0.005$ Mops/s ($<$\,$0.1\%$). The same shape held at $T=32$ on C ($10.390$--$10.416$, $<$\,$0.3\%$) and on D at both thread counts. CXL's lack of NIC-side queue depth removes one of the two warmup transients we observe on RDMA. Combined with the cross-day reproducibility result earlier in this section, the implication for benchmarking practice is concrete: \emph{CXL evaluations need fewer reps than RDMA evaluations to clear the same statistical bar}, because CXL has neither the cross-day NIC-state variance nor the within-run NIC-warmup transient.
 
@@ -785,18 +780,18 @@ D $T=48$ & 10.45 & 10.76 & 10.60 & 10.70 & 10.62 & \textbf{10.54} \\
 
 The structural conclusion stands: CHIME's optimization stack is RDMA-targeted, and a CXL-native CHIME successor would gain measurable throughput by selectively disabling features --- specifically speculative read on every workload, and possibly the entire feature stack on range scans. The May 6 data raises confidence in this conclusion from ``visible across two reservations'' to ``robust across three reservations and seven distinct physical machines.''
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.96\textwidth]{figures/fig12-transport-method.pdf}
 \caption{CHIME and Sherman, RDMA and CXL, on r650 Clemson 1\,CN $+$ 1\,MN. Sherman is the same CHIME source tree with all five feature flags compiled out, so the two transport variants share the same code path; only the \texttt{USE\_CXL=on} flag differs. CXL beats RDMA on C and D for both methods; CXL loses on E for both methods. CHIME's CXL-over-RDMA speedup is consistently larger than Sherman's because CHIME issues more small reads per operation, each of which benefits independently from CXL's lower latency.}
 \label{fig:fig12-transport-method}
-\end{figure*}
+\end{figure}
 
 \paragraph{The scheduler bug recurred when the experiment ended --- a clean reproduction recipe.} The April 27 experiment (\texttt{chime-04271959}) hit its 16-hour CloudLab auto-expiry at 11:59 UTC on April 28. The reservation (UUID \texttt{2afbcb47}) remained active until 16:00 UTC the same day, so we attempted to start a fresh experiment against the still-live reservation to use the remaining four hours of capacity. All five attempts (UUIDs \texttt{d58493c6}\ldots and four others) returned the same scheduler error verbatim: \texttt{0 available because of existing resource reservations to other projects or users}, even as the dry-run \texttt{nbd} confirmed r650 Clemson capacity was held through April 29. The April 27 success was therefore a single-shot honoring of the reservation that could not be re-bound once the original experiment ended. The structural finding is that the scheduler's reservation-to-experiment binding logic fails across experiment boundaries even when the reservation itself remains valid --- the same pattern observed during the April 22--26 outage in §\ref{sec:postmortem-error}, now demonstrated with a deterministic reproduction recipe suitable for a CloudLab support escalation.
 
 \paragraph{Late-data: 1\,CN $+$ 1\,MN RDMA fig\_12 YCSB~C on ConnectX-6~Dx (single-node baseline).} After the OFED kernel-module restart that re-populated the device capability flags, we collected a five-point throughput-thread curve for YCSB workload~C on a 1\,CN~$+$~1\,MN deployment of the original first-commit code (commit \texttt{8b3e73e}, plus six RoCE fixes plus three Dx-specific verb adjustments: \texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, and the OFED restart). Table~\ref{tab:rdma-c-curve} reports per-thread-count peak throughputs measured on the master node's per-epoch counter; results are committed under \texttt{exp/results/rdma-2node-04271959/}.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{YCSB~C/D/E throughput on r650 Clemson, 1\,CN~$+$~1\,MN, original first-commit code with three Dx-specific patches (\texttt{MAX\_ATOMIC\_ARG=8}, \texttt{max\_recv\_sge=2 for UD}, \texttt{openibd restart}). Peak across 10 measurement epochs. Per-point replication counts (\texttt{n}) are noted; the 16-thread variance across $\sim$10 reps from \texttt{fig\_12\_variance.jsonl} and \texttt{fig\_12\_variance\_v2.jsonl} is the bimodal distribution discussed below and visualized in Figure~\ref{fig:fig12-variance}.}
@@ -813,30 +808,30 @@ Threads & C (mean, n=3) & C range & D (95\%R/5\%I) & E (scan) \\
 64  & 5.36               & 5.31--5.39      & 4.82    & 1.32    \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 The 16-thread point ($\dagger$) is bimodal across repetitions: across the 8--10 reps committed across \texttt{fig\_12\_variance.jsonl} and \texttt{fig\_12\_variance\_v2.jsonl}, the warm-cache mode at $\sim 5.34$\,Mops/s appears in roughly 2 of 10 runs; the rest sit at the cold-cache steady state near $\sim 2.22$\,Mops/s. The most likely cause is per-thread cache-line locality on the first descent from the root --- with 16 threads the root-internal-node and the hotspot buffer fit into a single L2 (CHIME's tree cache settles at $\sim 11$\,MB) so warm-cache versus cold-cache runs sit on the two sides of a sharp transition. At 32 threads and above, several threads always pay the cold-cache cost in any given run, and the throughput stabilizes. This is consistent with the steady-state behavior of CHIME's hotspot buffer described in the paper.
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig12-final-cde.pdf}
 \caption{Throughput-thread curves for YCSB workloads C, D, E on r650 Clemson, 1\,CN~$+$~1\,MN, Apr 27, 2026. Where multiple replications were collected, points show the mean.}
 \label{fig:fig12-apr27}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.78\textwidth]{figures/fig12-variance.pdf}
 \caption{Eight-replication variance for YCSB~C across thread counts. Tight reproducibility at 32 and 64 threads ($<2\%$ spread), bimodal behavior at 16 and 48 threads (one-in-eight runs lands on the warm-cache mode at 5.34 or 12.01\,Mops/s; the rest sit at the cold-cache steady state). The bimodality reflects whether the hotspot buffer warms up before the throughput-measurement epoch or after.}
 \label{fig:fig12-variance}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig15a-ablation.pdf}
 \caption{fig\_15a cumulative ablation: each variant adds one CHIME technique on top of the previous. Workload C measured at 16 threads, workload D at 32 threads. \texttt{METADATA\_REPLICATION} is the only single-CN winner; \texttt{VACANCY\_AWARE\_LOCK} and \texttt{SIBLING\_BASED\_VALIDATION} are correctness mechanisms whose throughput value depends on cross-CN contention; \texttt{SPECULATIVE\_READ}'s hotspot buffer mildly hurts throughput in the absence of cross-CN access patterns it is designed for.}
 \label{fig:fig15a-ablation}
-\end{figure*}
+\end{figure}
 
 The curve is qualitatively consistent with read-only YCSB workloads on disaggregated indexes: super-linear scaling from 4 to 16 threads as the L3 cache and on-NIC queue depth become the bound (CHIME's hotspot buffer at 4.99\,MB and tree cache at 11.07\,MB both reach steady state in this range), then a plateau above 16 threads where the single-CN MN connection becomes the bottleneck. The 32-thread dip is reproducible and consistent with NUMA-domain crossing for a portion of the lock and metadata buffers; 64 threads recovers because every other thread is on the matching socket as the NIC.
 
@@ -851,7 +846,7 @@ The per-thread ratio is $0.0838 / 0.106 = 0.79$, well within the $2\times$ regre
 
 \paragraph{fig\_15a per-technique ablation on YCSB~C.} We re-built CHIME with each of its five techniques toggled off in succession, starting from a Sherman-equivalent configuration (all CHIME features OFF) and adding one technique per variant. Table~\ref{tab:fig15a-c} reports peak throughput on YCSB~C at 16 threads.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{Cumulative ablation: throughput on YCSB~C at 16 threads, 1\,CN~$+$~1\,MN, r650 Clemson.}
@@ -868,7 +863,7 @@ $+$ \texttt{SIBLING\_BASED\_VALIDATION}                      & 2.40 \\
 $+$ \texttt{SPECULATIVE\_READ} (full CHIME)                  & 2.22 \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 The Sherman-equivalent build (all five features OFF) failed at link time --- some part of the index code unconditionally references hopscotch primitives, so CHIME-without-hopscotch is not buildable in the current source tree. (This is itself a finding worth flagging: an artifact paper should be able to build the ``no-feature'' baseline cleanly.) Of the four buildable variants, the ablation shows: vacancy-aware locking is a near-no-op on both read-only YCSB~C and read-mostly YCSB~D in the 1-CN configuration (writes are where it matters, but with single-CN there is no cross-CN write contention); metadata replication contributes the largest single delta on both workloads (a saved RTT per metadata read); sibling-based validation is essentially neutral on throughput (it is a correctness mechanism, observed on Sherman's LOAD crash in §\ref{sec:stress}); speculative read shows a small \emph{negative} delta in this single-CN configuration, consistent with the paper's own observation that the hotspot buffer's value depends on cross-CN access patterns that this configuration does not produce. The absolute deltas (2.14--2.40 Mops/s on C; 3.75--4.16 Mops/s on D) are smaller than the paper's published values because the paper runs 10\,CN $\times$ 64 threads where the inter-CN coordination cost dominates; with one CN there is no such coordination to optimize. The ordering of contributions matches the paper.
 
@@ -876,7 +871,7 @@ The Sherman-equivalent build (all five features OFF) failed at link time --- som
 
 \paragraph{Workloads A, B, LOAD on the same RDMA 1\,CN~$+$~1\,MN configuration: aborted at \texttt{Tree.cpp:1596}.} On the RDMA build that produced Table~\ref{tab:rdma-c-curve} (not the CXL build whose stack trace is given earlier in this section), YCSB~A (50/50 read/update) and YCSB~B (95\% read, 5\% update) both failed deterministically at a different assertion: \texttt{Tree.cpp:1596 leaf\_node\_update: Assertion `j != (int)define::neighborSize' failed} during transaction execution after the LOAD phase completed. The hopscotch update path searches the neighborhood for the existing slot and exhausts the neighborhood without finding the key. We did not have time to determine whether this is a CHIME bug specific to single-CN execution (the published evaluation uses 10 CN), or a side-effect of \texttt{MAX\_ATOMIC\_ARG=8} (down from 32) breaking the masked-CAS semantics that hopscotch relies on for slot-update atomicity. Workload LOAD ran the MN side to completion of the LOAD phase but the CN side segfaulted, leaving an incomplete data point. We log these as known limitations of this reservation's data, recoverable on a future reservation by either (a)~debugging the assertion against multi-CN runs, or (b)~restoring \texttt{MAX\_ATOMIC\_ARG=32} once the underlying ATOMICS\_ARG capability gap on Dx is closed.
 
-\paragraph{Path to the data above: an initial RDMA failure that triggered a full OFED reinstall.} The data in Table~\ref{tab:rdma-c-curve} did not appear on the first attempt. Per the project specification's reservation-denial fallback, when the CXL smoke gate fails the runbook directs a pivot to a single-node RDMA run to collect missing fig\_12 A/B from Part One. The first RDMA attempt in this window installed MLNX OFED userspace only (\texttt{mlnxofedinstall --user-space-only --without-fw-update}), confirmed the GID-3 VLAN-bound RoCEv2 interface via \texttt{/sys/\allowbreak class/\allowbreak infiniband/\allowbreak mlx5\_2/\allowbreak ports/\allowbreak 1/\allowbreak gid\_attrs}, re-applied the six RoCE source-level fixes from §\ref{sec:effort-roce}, built the binary clean, and launched \texttt{memcached} on the master node listening on \texttt{10.10.1.1:11211} (the internal-LAN VLAN address). Cross-node connectivity over the RoCEv2 path was healthy. However, when both nodes launched the RDMA \texttt{ycsb\_test} simultaneously to start the 1\,CN + 1\,MN run, the CN-side binary segfaulted immediately on startup with no stdout produced, in a pattern visually similar to the CXL crash. Three candidate causes were on the table at this point: (i) interaction between MLNX OFED 4.9 userspace and our recent CXL-port commits to \texttt{include/Rdma.h} and \texttt{src/rdma/Resource.cpp}, (ii) a NUMA/hugepage state difference between this April~27 reservation and the April~5--7 reservations that produced our Part One data, or (iii) an environment artifact of the userspace-only OFED install (which skips kernel-module updates). Disk pressure on the 16\,GB root partition forced the install/build/run cycle through several relocations to \texttt{/proj/cs620426sp-PG0/} NFS, which is itself a finding. The bullet list below records the bisection that ruled out (i) and (ii) and isolated the cause to (iii) --- which after a full \texttt{--add-kernel-support} OFED reinstall produced the working RDMA stack the table data was collected on.
+\paragraph{Path to the data above: an initial RDMA failure that triggered a full OFED reinstall.} The data in Table~\ref{tab:rdma-c-curve} did not appear on the first attempt. Per the project specification's reservation-denial fallback, when the CXL smoke gate fails the runbook directs a pivot to a single-node RDMA run to collect missing fig\_12 A/B from Part One. The first RDMA attempt in this window installed MLNX OFED userspace only (\texttt{mlnxofedinstall --user-space-only --without-fw-update}), confirmed the GID-3 VLAN-bound RoCEv2 interface via \texttt{/sys/class/infiniband/mlx5\_2/ports/1/gid\_attrs}, re-applied the six RoCE source-level fixes from §\ref{sec:effort-roce}, built the binary clean, and launched \texttt{memcached} on the master node listening on \texttt{10.10.1.1:11211} (the internal-LAN VLAN address). Cross-node connectivity over the RoCEv2 path was healthy. However, when both nodes launched the RDMA \texttt{ycsb\_test} simultaneously to start the 1\,CN + 1\,MN run, the CN-side binary segfaulted immediately on startup with no stdout produced, in a pattern visually similar to the CXL crash. Three candidate causes were on the table at this point: (i) interaction between MLNX OFED 4.9 userspace and our recent CXL-port commits to \texttt{include/Rdma.h} and \texttt{src/rdma/Resource.cpp}, (ii) a NUMA/hugepage state difference between this April~27 reservation and the April~5--7 reservations that produced our Part One data, or (iii) an environment artifact of the userspace-only OFED install (which skips kernel-module updates). Disk pressure on the 16\,GB root partition forced the install/build/run cycle through several relocations to \texttt{/proj/cs620426sp-PG0/} NFS, which is itself a finding. The bullet list below records the bisection that ruled out (i) and (ii) and isolated the cause to (iii) --- which after a full \texttt{--add-kernel-support} OFED reinstall produced the working RDMA stack the table data was collected on.
 
 \paragraph{Bisection that recovered the RDMA path.} The bisection above produced four results, listed here in the order they were established:
 
@@ -1012,7 +1007,7 @@ mkdir -p build && cd build && cmake .. && make -j
 
 Master tables of all CloudLab identifiers cited in §\ref{sec:postmortem}. Reservation UUIDs (Table~\ref{tab:appendix-reservations}) and failed experiment UUIDs (Table~\ref{tab:appendix-failed}) are reproduced here for triage and possible cross-referencing with CloudLab portal logs.
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{Reservation UUIDs against project CS620426SP, April 22--26, 2026.}
@@ -1027,9 +1022,9 @@ UUID & Type & Window \\
 \texttt{cc0bf3c0-160f-4e53-bdd4-0f3e108b4757} & Admin-approved & Apr 21--26, 5d \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
-\begin{table*}[t]
+\begin{table}[H]
 \centering
 \small
 \caption{Failed \texttt{startExperiment} attempts. Each returned the scheduler error in §\ref{sec:postmortem-error} within ~90 seconds of submission.}
@@ -1047,6 +1042,6 @@ UUID & Date (UTC) & Bindings \\
 \texttt{1ddc9b8e-d3f2-4f61-a57c-a015ffbc5ba3} & 2026-04-26 23:15 & \texttt{n=2,hw=r650} \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \end{document}
