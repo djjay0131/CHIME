@@ -52,6 +52,7 @@ Three runtime findings emerge. First, CHIME-CXL reproduces across days and acros
 Two methodological contributions accompany the runtime results. A one-line allocator overlap (\texttt{CxlTransport::alloc\_offset\_} overwriting \texttt{root\_ptr\_ptr} at offset 8\,MB) was the root cause of a CXL crash that haunted three reservations and was fixed by reserving the first 16\,MB. We also document a six-day CloudLab reservation-scheduler outage (April 22--26) with full UUID timeline, verbatim error strings, and three concrete portal API additions, each independently sufficient to surface root cause inside the first failed window. The artifact is open-source at \url{https://github.com/djjay0131/CHIME}.
 \end{abstract}
 
+\newpage
 \tableofcontents
 \newpage
 
