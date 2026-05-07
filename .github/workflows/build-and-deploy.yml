@@ -40,6 +40,13 @@ jobs:
           working_directory: report
           latexmk_use_xelatex: false
 
+      - name: Build short version of final report PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main-short.tex
+          working_directory: report
+          latexmk_use_xelatex: false
+
       - name: Build presentation diagrams
         uses: xu-cheng/latex-action@v3
         with:
@@ -81,6 +88,9 @@ jobs:
           # Final combined report (May 6 deliverable)
           cp report/main-partwo.pdf site/static/pdfs/Jason_Cusati_Project_Final_Report.pdf
           cp report/main-partwo.pdf site/static/pdfs/final-report.pdf
+          # Short version of final report
+          cp report/main-short.pdf site/static/pdfs/Jason_Cusati_Project_Final_Report_Short.pdf
+          cp report/main-short.pdf site/static/pdfs/final-report-short.pdf
           # Progress presentation (Apr 9, history)
           cp presentation/main-v2.pdf site/static/pdfs/presentation.pdf
           # Final presentation (May 5 deliverable) — audience view (16 slides)
