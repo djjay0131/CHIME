@@ -17,6 +17,13 @@
 \usepackage{url}
 \usepackage{stfloats}  % allow figure*/table* at bottom of page
 
+% IEEEtran's default \theparagraph and \theparagraphdis use alphabetic counter (\alph) which caps at 26.
+% This report has 56 \paragraph entries, so switch to numeric to avoid "Counter too large".
+\renewcommand{\theparagraph}{\arabic{paragraph}}
+\makeatletter
+\def\theparagraphdis{\arabic{paragraph})}
+\makeatother
+
 \lstset{
   basicstyle=\ttfamily\small,
   breaklines=true,
