@@ -7,9 +7,11 @@ CS 6204 Advanced Topics in Systems — Virginia Tech, Spring 2026.
 
 ## Final Report (May 6 deliverable)
 
-**Download:** <a href="/CHIME/pdfs/Jason_Cusati_Project_Final_Report.pdf">Jason_Cusati_Project_Final_Report.pdf</a>
+**Downloads:**
+- <a href="/CHIME/pdfs/Jason_Cusati_Project_Final_Report_Short.pdf">Jason_Cusati_Project_Final_Report_Short.pdf</a> &mdash; short version, 27 pages (recommended for a first read)
+- <a href="/CHIME/pdfs/Jason_Cusati_Project_Final_Report.pdf">Jason_Cusati_Project_Final_Report.pdf</a> &mdash; full version, 42 pages (every figure, every UUID, every detail)
 
-{{< pdf "/pdfs/Jason_Cusati_Project_Final_Report.pdf" >}}
+{{< pdf "/pdfs/Jason_Cusati_Project_Final_Report_Short.pdf" >}}
 
 The final report is reframed around **agent-orchestrated reproduction on CloudLab** as the primary contribution, with CHIME serving as the case study. It covers:
 
